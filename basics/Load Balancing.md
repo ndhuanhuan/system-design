@@ -60,3 +60,4 @@ Load balancing specific workload types. For example, when designing the Authenti
 
 ## Good Reading Resources
 - https://www.acodersjourney.com/system-design-interview-load-balancing/
+- https://tianpan.co/notes/182-designing-l7-load-balancer

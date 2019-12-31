@@ -71,6 +71,12 @@ However, these two algorithms(Least-connections and latency-based (least-time)) 
 
 **Random N choices** (where N=2 in most cases / a.k.a Power of Two Choices): pick two at random and chose the better option of the two, avoiding the worse choice.
 
+Local LB is unaware of global downstream and upstream states, including
+- upstream service loads
+- upstream service may be super large, and thus it is hard to pick the right subset to cover with the load balancer
+- downstream service loads
+- the processing time of various requests are hard to predict
+
 
 ## Good Reading Resources
 - https://www.acodersjourney.com/system-design-interview-load-balancing/

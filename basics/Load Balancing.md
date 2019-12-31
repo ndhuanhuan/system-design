@@ -77,6 +77,19 @@ Local LB is unaware of global downstream and upstream states, including
 - downstream service loads
 - the processing time of various requests are hard to predict
 
+## Solutions
+There are three options to collect load the stats accurately and then act accordingly:
+- centralized & dynamic controller
+- distributed but with shared states
+- piggybacking server-side information in response messages or active probing
+
+Dropbox Bandaid team chose the third option because it fits into their existing random N choices approach well. However, instead of using local states, like the original random N choices do, they use real-time global information from the backend servers via the response headers.
+
+**Server utilization**: Backend servers are configured with a max capacity and count the on-going requests, and then they have utilization percentage calculated ranging from 0.0 to 1.0.
+
+There are two problems to consider:
+1. Handling HTTP errors: If a server fast fails requests, it attracts more traffic and fails more.
+2. Stats decay: If a server’s load is too high, no requests will be distributed there and hence the server gets stuck. They use a decay function of the inverted sigmoid curve to solve the problem.
 
 ## Good Reading Resources
 - https://www.acodersjourney.com/system-design-interview-load-balancing/

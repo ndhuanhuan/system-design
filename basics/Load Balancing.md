@@ -91,6 +91,17 @@ There are two problems to consider:
 1. **Handling HTTP errors**: If a server fast fails requests, it attracts more traffic and fails more.
 2. **Stats decay**: If a server’s load is too high, no requests will be distributed there and hence the server gets stuck. They use a decay function of the inverted sigmoid curve to solve the problem.
 
+## Load Balancer Types
+https://tianpan.co/notes/2018-07-23-load-balancer-types
+Generally speaking, load balancers fall into three categories:
+
+- DNS Round Robin (rarely used): clients get a randomly-ordered list of IP addresses.
+pros: easy to implement and free
+cons: hard to control and not responsive, since DNS cache needs time to expire
+- Network (L3/L4) Load Balancer: traffic is routed by IP address and ports.L3 is network layer (IP). L4 is session layer (TCP).
+pros: better granularity, simple, responsive
+- Application (L7) Load Balancer: traffic is routed by what is inside the HTTP protocol. L7 is application layer (HTTP).
+
 ## Good Reading Resources
 - https://www.acodersjourney.com/system-design-interview-load-balancing/
 - https://tianpan.co/notes/182-designing-l7-load-balancer

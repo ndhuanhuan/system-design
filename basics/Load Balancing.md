@@ -58,6 +58,20 @@ Load balancing specific workload types. For example, when designing the Authenti
 - URL hash
 - Consistent Hashing(* important)
 
+## Challenges
+### Why is it hard to balance loads? 
+The answer is that it is hard to collect accurate load distribution stats and act accordingly.
+Distributing-by-requests ≠ distributing-by-load 
+Random and round-robin distribute the traffic by requests. However, the actual load is not per request, some are heavy in CPU or thread utilization, while some are lightweight.
+To be more accurate on the load, load balancers have to maintain local states of observed active request number, connection number, or request process latencies for each backend server. And based on them, we can use distribution algorithms like Least-connections, least-time, and Random N choices:
+- **Least-connections**: a request is passed to the server with the least number of active connections.
+- **latency-based (least-time)**: a request is passed to the server with the least average response time and least number of active connections, taking into account weights of servers.
+
+However, these two algorithms(Least-connections and latency-based (least-time)) work well only with only one load balancer. If there are multiple ones, there might have herd effect. That is to say; all the load balancers notice that one service is momentarily faster, and then all send requests to that service.
+
+**Random N choices** (where N=2 in most cases / a.k.a Power of Two Choices): pick two at random and chose the better option of the two, avoiding the worse choice.
+
+
 ## Good Reading Resources
 - https://www.acodersjourney.com/system-design-interview-load-balancing/
 - https://tianpan.co/notes/182-designing-l7-load-balancer

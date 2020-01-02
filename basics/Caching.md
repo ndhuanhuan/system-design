@@ -8,3 +8,14 @@ accessed items.
 - Caches can exist at all levels in architecture but are often found at
 the level nearest to the front end, where they are implemented to return data
 quickly without taxing downstream levels.
+
+## Application server cache
+
+Placing a cache directly on a request layer node enables the local storage of response data. Each time a request is made to the service, the node will quickly return local, cached data if it exists. If it is not in the cache, the requesting node will query the data from disk. The cache on one request layer node could also be located both in memory (which is very fast) and on the node’s local disk (faster
+than going to network storage).
+
+What happens when you expand this to many nodes? 
+If the request layer is expanded to multiple nodes, it’s still quite possible to have each node host its owncache. However, if your load balancer randomly distributes requests across the nodes, the same request will go to different nodes, thus increasing cache misses.
+Two choices for overcoming this hurdle are **global caches** and **distributed caches**.
+
+## Distributed cache

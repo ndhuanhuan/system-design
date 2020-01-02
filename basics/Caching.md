@@ -1,3 +1,4 @@
+# Caching
 ## Basics
 Load balancing helps you scale horizontally across an ever-increasing number of servers,  but caching will enable you to make vastly better use of the resources you already have, as well as making otherwise unattainable product requirements feasible. 
 - Caches take advantage of the locality of reference principle: recently requested data is likely to be requested again. They are used in almost every layer of computing: hardware, operating systems, web browsers, web applications and more. 

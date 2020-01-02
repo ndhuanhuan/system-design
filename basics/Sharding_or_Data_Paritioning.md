@@ -42,3 +42,5 @@ In such cases, either we have to create more DB shards or have to rebalance exis
 
 ## Readings
 - https://medium.com/@katedoesdev/normalized-vs-denormalized-databases-210e1d67927d
+- https://medium.com/system-design-blog/database-sharding-69f3f4bd96db
+- https://www.acodersjourney.com/database-sharding/

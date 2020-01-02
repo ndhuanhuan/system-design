@@ -19,13 +19,15 @@ If the request layer is expanded to multiple nodes, it’s still quite possible 
 Two choices for overcoming this hurdle are **global caches** and **distributed caches**.
 
 ## Distributed cache
-(TODO: need to go deeper, find an example, Redis?)
+- (TODO: need to go deeper, find an example, Redis?)
+
 In a distributed cache, each of its nodes own part of the cached data. Typically, the cache is divided up using a **consistent hashing** function, such that if a request node is looking for a certain piece of data, it can quickly know where to look within the distributed cache to determine if that data is available. In this case, each node has a small piece of the cache, and will then send a request to another node for the data before going to the origin. Therefore, one of the **advantages** of a distributed cache is the ease by which we can increase the cache space, which can be achieved just by adding nodes to the request pool.
 
 A **disadvantage** of distributed caching is resolving a missing node. Some distributed caches get around this by storing multiple copies of the data on different nodes; however, you can imagine how this logic can get complicated quickly, especially when you add or remove nodes from the request layer. Although even if a node disappears and part of the cache is lost, the requests will just pull from the origin—so it isn’t necessarily catastrophic!
 
 ## Global Cache
-(TODO: need to go deeper, find an example)
+- (TODO: need to go deeper, find an example)
+
 A global cache is just as it sounds: all the nodes use the same single cache space. This involves adding a server, or file store of some sort, faster than your original store and accessible by all the request layer nodes. Each of the request nodes queries the cache in the same way it would a local one. This kind of caching scheme can get a bit **complicated** because it is very easy to overwhelm a single cache as the number of clients and requests increase, but is very effective in some architectures (particularly ones with specialized hardware that make this global cache very fast, or that have a fixed dataset that needs to be cached).
 
 There are two common forms of global caches depicted in the following diagram:
@@ -76,3 +78,6 @@ An alternative is to use commit logs. To update the cache, we can store all the 
 
 # Readings & Reference
 - http://blog.gainlo.co/index.php/2016/05/17/design-a-cache-system/
+- http://highscalability.com/blog/2016/1/25/design-of-a-modern-cache.html
+- https://massivetechinterview.blogspot.com/2017/04/system-design-cache.html
+- https://www.8bitmen.com/distributed-cache-101-the-only-guide-youll-ever-need/

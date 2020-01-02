@@ -39,3 +39,6 @@ C. **Rebalancing:** There could be many reasons we have to change our sharding s
   2. There is a lot of load on a shard, e.g., there are too many requests being handled by the DB shard dedicated to user photos.
 
 In such cases, either we have to create more DB shards or have to rebalance existing shards, which means the partitioning scheme changed and all existing data moved to new locations. Doing this without incurring downtime is extremely difficult. Using a scheme like directory based partitioning does make rebalancing a more palatable experience at the cost of increasing the complexity of the system and creating a new single point of failure (i.e. the lookup service/database).
+
+## Readings
+- https://medium.com/@katedoesdev/normalized-vs-denormalized-databases-210e1d67927d

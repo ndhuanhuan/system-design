@@ -246,4 +246,46 @@ We can look up the key in our database or key-value store to get the full URL. I
 
 Our service supports custom aliases. Users can pick any ‘key’ they like, but providing a custom alias is not mandatory. However, it is reasonable (and often desirable) to impose a size limit on a custom alias to ensure we have a consistent URL database. Let’s assume users can specify a maximum of 16 characters per customer key (as reflected in the above database schema).
 
+## 6. Data​ ​Partitioning​ ​and​ ​Replication
 
+### Range​ ​Based​ ​Partitioning:
+1.  ​We​ ​can​ ​store​ ​URLs​ ​in​ ​separate​ ​partitions​ ​based​ ​on​ ​the​ ​first​ ​letter​ ​of​ ​the​ ​URL​ ​or​ ​the​ ​hash​ ​key.
+2. ​We​ ​can​ ​even​ ​combine​ ​certain​ ​less​ ​frequently​ ​occurring​ ​letters​ ​into​ ​one​ ​database​ ​partition.
+3. The​ ​main​ ​problem​ ​with​ ​this​ ​approach​ ​is​ ​that​ ​it​ ​can​ ​lead​ ​to​ ​unbalanced​ ​servers,​ ​for​ ​instance;​ ​if​ ​we​ ​decide​ ​to​ ​put​ ​all​ ​URLs​ ​starting​ ​with letter​ ​‘E’​ ​into​ ​a​ ​DB​ ​partition,​ ​but​ ​later​ ​we​ ​realize​ ​that​ ​we​ ​have​ ​too​ ​many​ ​URLs​ ​that​ ​start​ ​with​ ​letter​ ​‘E’,​ ​which​ ​we​ ​can’t​ ​fit​ ​into​ ​one​ ​DB partition.
+
+### Hash-Based​ ​Partitioning:
+1. we​ ​take​ ​a​ ​hash​ ​of​ ​the​ ​object​ ​we​ ​are​ ​storing,​ ​and​ ​based​ ​on​ ​this​ ​hash​ ​we​ ​figure​ ​out​ ​the​ ​DB partition​ ​to​ ​which​ ​this​ ​object​ ​should​ ​go.​
+2. This​ ​approach​ ​can​ ​still​ ​lead​ ​to​ ​overloaded​ ​partitions,​ ​which​ ​can​ ​be​ ​solved​ ​by​ ​using​ ​​Consistent​ ​Hashing​.
+
+## 7. Cache
+
+### How​ ​much​ ​cache​ ​should​ ​we​ ​have?
+We​ ​can​ ​start​ ​with​ ​20%​ ​of​ ​daily​ ​traffic​ ​and​ ​based​ ​on​ ​clients’​ ​usage​ ​pattern​ ​we​ ​can​ ​adjust​ ​how many​ ​cache​ ​servers​ ​we​ ​need.​ ​As​ ​estimated​ ​above​ ​we​ ​need​ ​170GB​ ​memory​ ​to​ ​cache​ ​20%​ ​of​ ​daily​ ​traffic​ ​since​ ​a​ ​modern​ ​day​ ​server​ ​can have​ ​256GB​ ​memory,​ ​we​ ​can​ ​easily​ ​fit​ ​all​ ​the​ ​cache​ ​into​ ​one​ ​machine,​ ​or​ ​we​ ​can​ ​choose​ ​to​ ​use​ ​a​ ​couple​ ​of​ ​smaller​ ​servers​ ​to​ ​store​ ​all these​ ​hot​ ​URLs.
+
+### Which​ ​cache​ ​eviction​ ​policy​ ​would​ ​best​ ​fit​ ​our​ ​needs?
+Least​ ​Recently​ ​Used​ ​(LRU)​ ​can​ ​be​ ​a​ ​reasonable​ ​policy​ ​for​ ​our​ ​system.
+
+## 8. Load Balancer (LB)
+We​ ​can​ ​add​ ​Load​ ​balancing​ ​layer​ ​at​ ​three​ ​places​ ​in​ ​our​ ​system:
+
+1. Between​ ​Clients​ ​and​ ​Application​ ​servers
+2. Between ​​Application ​​Servers ​​and ​​database​ ​servers
+3. Between​ ​Application ​​Servers​ ​and​ ​Cache ​​servers
+
+## 9. Purging​ ​or​ ​DB​ ​cleanup
+Should​ ​entries​ ​stick​ ​around​ ​forever​ ​or​ ​should​ ​they​ ​be​ ​purged?​ ​If​ ​a​ ​user-specified​ ​expiration​ ​time​ ​is​ ​reached,​ ​what​ ​should​ ​happen​ ​to the​ ​link?​ ​If​ ​we​ ​chose​ ​to​ ​actively​ ​search​ ​for​ ​expired​ ​links​ ​to​ ​remove​ ​them,​ ​it​ ​would​ ​put​ ​a​ ​lot​ ​of​ ​pressure​ ​on​ ​our​ ​database.​ ​We​ ​can​ ​slowly remove​ ​expired​ ​links​ ​and​ ​do​ ​a​ ​lazy​ ​cleanup​ ​too.​ ​Our​ ​service​ ​will​ ​make​ ​sure​ ​that​ ​only​ ​expired​ ​links​ ​will​ ​be​ ​deleted,​ ​although​ ​some expired​ ​links​ ​can​ ​live​ ​longer​ ​but​ ​will​ ​never​ ​be​ ​returned​ ​to​ ​users.
+
+1. Whenever​ ​a​ ​user​ ​tries​ ​to​ ​access​ ​an​ ​expired​ ​link,​ ​we​ ​can​ ​delete​ ​the​ ​link​ ​and​ ​return​ ​an​ ​error​ ​to​ ​the​ ​user.
+2. A​ ​separate​ ​Cleanup​ ​service​ ​can​ ​run​ ​periodically​ ​to​ ​remove​ ​expired​ ​links​ ​from​ ​our​ ​storage​ ​and​ ​cache.​ ​This​ ​service​ ​should​ ​be​ ​very lightweight​ ​and​ ​can​ ​be​ ​scheduled​ ​to​ ​run​ ​only​ ​when​ ​the​ ​user​ ​traffic​ ​is​ ​expected​ ​to​ ​be​ ​low.
+3. We​ ​can​ ​have​ ​a​ ​default​ ​expiration​ ​time​ ​for​ ​each​ ​link,​ ​e.g.,​ ​two​ ​years.
+4. After​ ​removing​ ​an​ ​expired​ ​link,​ ​we​ ​can​ ​put​ ​the​ ​key​ ​back​ ​in​ ​the​ ​key-DB​ ​to​ ​be​ ​reused.
+5. Should​ ​we​ ​remove​ ​links​ ​that​ ​haven’t​ ​been​ ​visited​ ​in​ ​some​ ​length​ ​of​ ​time,​ ​say​ ​six​ ​months?​ ​This​ ​could​ ​be​ ​tricky.​ ​Since​ ​storage​ ​is
+getting​ ​cheap,​ ​we​ ​can​ ​decide​ ​to​ ​keep​ ​links​ ​forever.
+
+## 10. Security​ ​and​ ​Permissions
+Can​ ​users​ ​create​ ​private​ ​URLs​ ​or​ ​allow​ ​a​ ​particular​ ​set​ ​of​ ​users​ ​to​ ​access​ ​a​ ​URL?
+
+1. We​ ​can​ ​store​ ​permission​ ​level​ ​(public/private)​ ​with​ ​each​ ​URL​ ​in​ ​the​ ​database.
+2. ​We​ ​can​ ​also​ ​create​ ​a​ ​separate​ ​table​ ​to​ ​store​ ​UserIDs that​ ​have​ ​permission​ ​to​ ​see​ ​a​ ​specific​ ​URL.​
+3. ​If​ ​a​ ​user​ ​does​ ​not​ ​have​ ​permission​ ​and​ ​try​ ​to​ ​access​ ​a​ ​URL,​ ​we​ ​can​ ​send​ ​an​ ​error​ ​(HTTP 401)​ ​back.​
+4. ​Given​ ​that,​ ​we​ ​are​ ​storing​ ​our​ ​data​ ​in​ ​a​ ​NoSQL​ ​wide-column​ ​database​ ​like​ ​Cassandra,​ ​the​ ​key​ ​for​ ​the​ ​table​ ​storing permissions​ ​would​ ​be​ ​the​ ​‘Hash’​ ​(or​ ​the​ ​KGS​ ​generated​ ​‘key’),​ ​and​ ​the​ ​columns​ ​will​ ​store​ ​the​ ​UserIDs​ ​of​ ​those​ ​users​ ​that​ ​have permissions​ ​to​ ​see​ ​the​ ​URL.

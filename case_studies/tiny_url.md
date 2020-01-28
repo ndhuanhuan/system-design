@@ -289,3 +289,6 @@ Can​ ​users​ ​create​ ​private​ ​URLs​ ​or​ ​allow​ �
 2. ​We​ ​can​ ​also​ ​create​ ​a​ ​separate​ ​table​ ​to​ ​store​ ​UserIDs that​ ​have​ ​permission​ ​to​ ​see​ ​a​ ​specific​ ​URL.​
 3. ​If​ ​a​ ​user​ ​does​ ​not​ ​have​ ​permission​ ​and​ ​try​ ​to​ ​access​ ​a​ ​URL,​ ​we​ ​can​ ​send​ ​an​ ​error​ ​(HTTP 401)​ ​back.​
 4. ​Given​ ​that,​ ​we​ ​are​ ​storing​ ​our​ ​data​ ​in​ ​a​ ​NoSQL​ ​wide-column​ ​database​ ​like​ ​Cassandra,​ ​the​ ​key​ ​for​ ​the​ ​table​ ​storing permissions​ ​would​ ​be​ ​the​ ​‘Hash’​ ​(or​ ​the​ ​KGS​ ​generated​ ​‘key’),​ ​and​ ​the​ ​columns​ ​will​ ​store​ ​the​ ​UserIDs​ ​of​ ​those​ ​users​ ​that​ ​have permissions​ ​to​ ​see​ ​the​ ​URL.
+
+# Ref
+- https://github.com/telucis/a_leetcode/blob/4df75ce26787c81c5e5b4b6af18f34e983bb6846/design/SystemDesign/Design_TinyUrl.md#L172

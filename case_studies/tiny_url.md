@@ -292,3 +292,4 @@ Can​ ​users​ ​create​ ​private​ ​URLs​ ​or​ ​allow​ �
 
 # Ref
 - https://github.com/telucis/a_leetcode/blob/4df75ce26787c81c5e5b4b6af18f34e983bb6846/design/SystemDesign/Design_TinyUrl.md#L172
+- https://tianpan.co/notes/84-designing-a-url-shortener

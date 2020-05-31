@@ -264,6 +264,12 @@ We​ ​can​ ​start​ ​with​ ​20%​ ​of​ ​daily​ ​traffic
 
 ### Which​ ​cache​ ​eviction​ ​policy​ ​would​ ​best​ ​fit​ ​our​ ​needs?
 Least​ ​Recently​ ​Used​ ​(LRU)​ ​can​ ​be​ ​a​ ​reasonable​ ​policy​ ​for​ ​our​ ​system.
+When the cache is full, and we want to replace a link with a newer/hotter URL, how would we choose?
+Least Recently Used (LRU) can be a reasonable policy for our system. Under this policy, we discard the least recently used URL first. We can use a Linked Hash Map or a similar data structure to store our URLs and Hashes, which will alsokeep track of which URLs are accessed recently. To further increase the efficiency, we can replicate our caching servers to
+distribute load between them. 
+
+### How can each cache replica be updated? 
+Whenever there is a cache miss, our servers would be hitting backend database. Whenever this happens, we can update the cache and pass the new entry to all the cache replicas. Each replica can update their cache by adding the new entry. If a replica already has that entry, it can simply ignore it.
 
 ## 8. Load Balancer (LB)
 We​ ​can​ ​add​ ​Load​ ​balancing​ ​layer​ ​at​ ​three​ ​places​ ​in​ ​our​ ​system:

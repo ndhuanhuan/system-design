@@ -125,7 +125,7 @@ A few observations about the nature of the data we are storing:
 We would need two tables, one for storing information about the Pastes and the other for users’ data.
 
 <p align="center">
-  <img src="images/schema.svg"><br>
+  <img src="https://github.com/immo2300576/SystemDesign/raw/218dc68356c500d6ac7a1c232035a303afc4d71a/example/Pastebin/images/schema.svg"><br>
 </p>
 
 Here, ‘URlHash’ is the URL equivalent of the TinyURL and ‘ContentKey’ is a reference to an external object storing the contents of the paste; we’ll discuss the external storage of the paste contents later in the chapter.
@@ -134,7 +134,7 @@ Here, ‘URlHash’ is the URL equivalent of the TinyURL and ‘ContentKey’ is
 At a high level, we need an application layer that will serve all the read and write requests. Application layer will talk to a storage layer to store and retrieve data. We can segregate our storage layer with one database storing metadata related to each paste, users, etc., while the other storing the paste contents in some object storage (like [Amazon S3](https://en.wikipedia.org/wiki/Amazon_S3)). This division of data will also allow us to scale them individually.
 
 <p align="center">
-  <img src="images/overview.svg"><br>
+  <img src="https://github.com/immo2300576/SystemDesign/raw/218dc68356c500d6ac7a1c232035a303afc4d71a/example/Pastebin/images/overview.svg"><br>
 </p>
 
 ## 8. Component Design
@@ -158,7 +158,7 @@ We can divide our datastore layer into two:
 * **Object storage:** We can store our contents in an Object Storage like Amazon’s S3. Whenever we feel like hitting our full capacity on content storage, we can easily increase it by adding more servers.<br>
 
 <p align="center">
-  <img src="images/detail.png"><br>
+  <img src="https://github.com/immo2300576/SystemDesign/raw/218dc68356c500d6ac7a1c232035a303afc4d71a/example/Pastebin/images/detail.png"><br>
   <i>Detailed component design for Pastebin</i>
 </p>
 

@@ -2,10 +2,17 @@
 
 ## Functional Requirements
 
-Users should be able to upload/download/view photos.
-Users can perform searches based on photo/video titles.
-Users can follow other users.
-The system should be able to generate and display a user’s timeline consisting of top photos from all the people the user follows.
+### Functional​ ​Requirements
+1. Users​ ​should​ ​be​ ​able​ ​to​ ​upload/download/view​ ​photos.
+2. Users ​​can ​​perform ​​searches ​​based ​​on ​​photo/video​​titles.
+3. Users​​ can​ ​follow​ ​other ​​users.
+4. The ​​system ​​should ​​be ​​able ​​to ​​generate ​​and ​​display ​​a ​​user’s ​​timeline ​​consisting ​​of ​​top​ ​photos​ ​from​​ all​ ​the ​​people ​​the​ ​user ​​follows.
+
+### Non-functional​ ​Requirements
+1. Our​ ​service​ ​needs​ ​to​ ​be​ ​highly​ ​available.
+2. The​​ acceptable​ ​latency​ ​of ​​the ​​system​​ is ​​200ms​ ​for​​ timeline ​​generation.
+3. Consistency​ ​can​ ​take​ ​a​ ​hit​​(in​​ the ​​interest​ ​of​ ​availability),​ ​if​​ a​ ​user ​​doesn’t ​​see​ ​a ​​photo ​​for ​​a​ ​while, ​​it ​​should ​​be ​​fine.
+4. The​​ system​​ should​ ​be​ ​highly ​​reliable,​ ​any​ ​photo/video ​​uploaded ​​should​ ​not ​​be ​​lost.
 
 ## Some Design Considerations
 The system would be read-heavy, so we will focus on building a system that can retrieve photos quickly.

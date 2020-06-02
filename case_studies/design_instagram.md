@@ -24,6 +24,13 @@ The system would be read-heavy, so we will focus on building a system that can r
 ## Important Read
 https://www.scribd.com/document/89025069/Mike-Krieger-Instagram-at-the-Airbnb-tech-talk-on-Scaling-Instagram
 
+## Capacity​ ​Estimation​ ​and​ ​Constraints
+1. Let’s​ ​assume​ ​we​ ​have​ ​300M​ ​total​ ​users,​ ​with​ ​1M​ ​daily​ ​active​ ​users.
+2. 2M​ ​new​ ​photos​ ​every​ ​day,​ ​23​ ​new​ ​photos​ ​every​ ​second.
+3. Average​ ​photo​ ​file​ ​size​ ​=>​ ​200KB
+4. Total​ ​space​ ​required​ ​for​ ​1​ ​day​ ​of​ ​photos. `2M​ ​*​ ​200KB​ ​=>​ ​400​ ​GB`
+5. Total​ ​space​ ​required​ ​for​ ​5​ ​years: `400GB​ ​*​ ​365​ ​(days​ ​a​ ​year)​ ​*​ ​5​ ​(years)​ ​~=​ ​712​ ​TB`
+
 ## High Level System Design
 At a high-level, we need to support two scenarios, one to upload photos and the other to view/search photos. Our service would need some block storage servers to store photos and also some database servers to store metadata information about the photos.
 

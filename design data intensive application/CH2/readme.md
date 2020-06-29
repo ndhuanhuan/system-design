@@ -40,3 +40,8 @@ Much similar with the property graph model
 * Object
 
 Using by SPARQL and is base of the semantic network
+
+
+# Notes
+- A key-value store is an alternative construction, where each element has a unique key corresponding with some chunk of data as the store.
+- Technically speaking the "value" in key-value can be any abstract type, from a string all the way to binary blob. The document model is a subtype of key-value stores in which each of the data chunks is forced to be a document.

@@ -1,12 +1,18 @@
 # Data Models and Query Language
 
-## Relational Model
+## Relational Model(SQL)
 
 Good at handling:
 
-* Structural relationship, between one-to-many and many-to-many
+* Structural relationship,  many-to-many
 * Make the data relationship explicit (schema-on-write)
 * SQL
+
+
+## Document Model(no-sql)
+Good at handling:
+
+* one-to-many relationships(tree structure data) or not relationships between records
 
 ## Graph Model
 

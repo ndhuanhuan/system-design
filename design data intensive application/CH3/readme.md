@@ -83,3 +83,6 @@ Instead of storing complete rows in each database segment files, column-oriented
 Note that at each column segment files, the row order needs to be maintained so that we know at nth position of a file is the nth row.
 
 Sorted COS is particularly good for data compression because same values are sequential then. While the first column index sorts all values and changes the value position, the second index can just be sorted reference table to the actual value position.
+
+# Notes
+https://github.com/ResidentMario/designing-data-intensive-applications-notes/blob/master/Chapter%203%20---%20Storage%20and%20Retrieval.ipynb

@@ -13,8 +13,8 @@
 
 # Notes
 ## Human-readable data interchange formats
-JSON and XML (and CSV, and the other usual suspects) are common data interchange formats, meant to be moved between application boundaries.
-These formats are considered to be lowest common denominators, however.
-They have parsing problems. For example, it's often impossible to difficult to determine the type of an object.
-Being human-readable, they are also inefficient in resource terms when performing network transfers.
-Still, for simple use cases these formats are usually sufficient.
+- JSON and XML (and CSV, and the other usual suspects) are common data interchange formats, meant to be moved between application boundaries.
+- These formats are considered to be lowest common denominators, however.
+- They have parsing problems. For example, it's often impossible to difficult to determine the type of an object.
+- Being human-readable, they are also inefficient in resource terms when performing network transfers.
+- Still, for simple use cases these formats are usually sufficient.

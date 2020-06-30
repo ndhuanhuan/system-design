@@ -158,3 +158,16 @@ A further step can be taken to tolerate larger scale failure. If a large portion
 
 
 # Notes
+## Single-leader replication
+- The first important choice that needs to be made is whether replication is synchronous or asynchronous.
+- Almost all replication is done asynchronously, because synchronous replication introduces unbounded latency to the application.
+- User-facing applications generally want to maintain the illusion of being synchronous, even when the underlying infrastructure is not.
+- Asynchronous replication introduces a huge range of problems that you have to contend with if you try to maintain this illusion.
+- The precise configuration of concerns with a single-leader replication strategy differs. At a minimum the leader handles writes, and communicates those writes to the follower, and then the followers provide reads.
+- If a follower fails, you perform catch-up recovery. This is relatively easy (example, Redis).
+- If a leader fails you have to perform a failover. This is very hard:
+- If asynchronous replication is used the replica that is elected the leader may be "missing" some transaction history which occurred in the leader. Totally ordered consistency goes wrong.
+- You can discard writes in this case, but this introduces additional complexity onto any coordinating services that are also aware of those writes (such as cache invalidation).
+- It is possible for multiple nodes to believe they are the leader (Byzantine generals). This is dangerous as it allows concurrent writes to different parts of the system. E.g. split brain.
+- Care must be taken in setting the timeout. Timeouts that are too long will result in application delay for users. Timeouts that are too short will cause unnecessary failovers during high load periods.
+- Every solution to these problems requires making trade-offs!

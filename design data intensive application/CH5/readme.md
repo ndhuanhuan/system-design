@@ -171,3 +171,32 @@ A further step can be taken to tolerate larger scale failure. If a large portion
 - It is possible for multiple nodes to believe they are the leader (Byzantine generals). This is dangerous as it allows concurrent writes to different parts of the system. E.g. split brain.
 - Care must be taken in setting the timeout. Timeouts that are too long will result in application delay for users. Timeouts that are too short will cause unnecessary failovers during high load periods.
 - Every solution to these problems requires making trade-offs!
+
+## Replication streams
+- How do you implement the replication streams?
+- The immediately obvious solution is statement-based replication. Every write request results in a follower update.
+- This is a conceptually simple architecture and likely the most compact and human-readable one. But it's one that's fallen out of favor due to problems with edge cases.
+- Statement-based replication requires pure functions. Non-deterministic functions (RAND, NOW), auto-incrementation (UPDATE WHERE), and side effects (triggers and so on) create difficulties.
+- Write-ahead log shipping is an alternative where you ship your write-ahead log (if you're a database or something else with a WAL).
+- This is nice because it doesn't require any additional work by the service. A WAL already exists.
+- This deals with the statement-based replication problems because WALs contain record dumps by design. To update a follower, push that record dump to it.
+- The tradeoff is that record dumps are a data storage implementation detail. Data storage may change at any times, and so the logical contents of the WAL may differ between service versions.
+- The write-ahead logs of different versions of a service are generally incompatible! But your system will contain many different versions.
+- Generally WALs are not designed to be version-portable, so upgrading distributed services using WAL shipping for replication requires application downtime.
+- Logical log replication is the use of an alternative log format for replication. E.g. replication is handled by its own distinct logs that are only used for that one specific purpose.
+- This is more system that you have to maintain, but it's naturally backwards and forward compatible if you design it right (using e.g. a data interchange format like Protobufs) and works well in practice.
+- Post-script: you may want partial replication. In that case you generally need to have application-level replication. You can do this in databases, for example, by using triggers and stored procedures to move data that fits your criteria in specific ways.
+- Asynchronously replicated systems are naturally eventually consistent. No guarantees are made for when "eventually" will come to pass.
+- Replication lag occurs in many different forms. Some specific types of lag can be mitigated (at the cost of performance and complexity), if doing so is desirable for the application (but you can only recover a fully synchronous application by being fully synchronous).
+- The book cites three examples of replication lag that are the three biggest concerns for systems.
+The first one: your user expects that data they write they can immediately read. But if they write to a leader and read from a replica, and the replica falls behind the leader, they may not see that data.
+- A system that guarantees users can see their own modified data on refresh is one which provides read-your-write consistency. In practice, most applications want to provide this!
+- You can implement read-your-writes in a bunch of different ways, but the easiest way is to simply have the leader handle read requests for user-owned data.
+- Another issue occurs if a user is reading from replica, and then switches to another replica that is further out of sync than the previous one. This creates the phenomenon of going backwards in time, which is bad.
+- Applications which guarantee this doesn't happen provide monotonic reads.
+- An easy way to get monotonic reads is to have the user always read from the same replica (e.g. instead of giving them a random one).
+- The third kind of inconsistency is causal inconsistency. Data may get written to one replica in one order, and to another in a different order. Users that move replicas will see their data rearranged.
+- Globally ordered reads require that the system be synchronous, so we can't recover all of the order. However, what we can do is gaurantee that events that have a causal relationship (e.g. this event happened, which caused this event to happen) are mirrored correctly across all nodes.
+- This is a weaker gaurantee than fully synchronous behavior because it only covers specific subsequences (user stories) from the data, not the entire sequence as a whole.
+- A system that handles this problem is said to provide consistent prefix reads.
+- It's notable that you can avoid all of these problems if you implement transactions. Transactions are a classical database feature that was oft-dropped in the new world because it is too slow and non-scalable for a distributed system to implement. They seem to be making a comeback now, but it's still a wait-and-see.

@@ -76,3 +76,17 @@ Three strategies could be applied:
 * Send all requests from clients from a routing tier first, which determines the node that should handle each request and forwards it accordingly. This routing tier does not itself handle any requests and it only acts as a partition-aware load balancer.
 
 * Require that clients be aware of the partitioning and the assignment of partitions to nodes. In this case, a client can connect directly to the appropriate node, without any intermediary.
+
+
+# Notes
+## Rebalancing¶
+- If you partition, you will eventually need to rebalance.
+- Rebalancing schemes are all about accounting for the introduction of additional partitions into the store, whilst limiting the amount of actual data that needs to get moved around in response.
+E.g. a hash mod N would work poorly because it would result in a lot of data having to be moved.
+- There are two popular rebalancing schemes.
+- One is to have a fixed partitions strategy, where that number greatly exceeds the number of actual nodes. Cassandra calls these "virtual nodes" for example.
+- When a new partition comes up, the partition grabs responsibility from some still-mostly-empty partitions from the existing partitions. Little data moves!
+- This is an additional abstraction layer, however, and it requires operational overhead. The point is lost if you use too extreme a number of partitions.
+- The laternative is dynamic partitioning. In this case you specify a maximum partition size, and split the partition when the data approaches that size (like growing a dict in Python).
+- Partitions can stay on the same node after a split for a while, but will transfer over to a different node (snapshot operation). E.g. HBase implements this strategy using HDFS snapshotting.
+- The advantage of this scheme is that it requires. The disadvantage is that it is ungainly when the datasets are small.

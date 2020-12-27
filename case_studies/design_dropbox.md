@@ -190,3 +190,4 @@ One of the primary concerns users will have while storing their files in the clo
 
 # Ref:
 https://github.com/CrazySquirrel/Outtalent/blob/20205bdd34237e205b5a8e36c10001e646472dab/System%20Design/Problems/Dropbox/README.md
+https://www.dropbox.com/business/trust/security/architecture

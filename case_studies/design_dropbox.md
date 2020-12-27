@@ -185,3 +185,8 @@ Initially, a simple Round Robin approach can be adopted that distributes incomin
 
 ## 12. Security, Permissions and File Sharing
 One of the primary concerns users will have while storing their files in the cloud is the privacy and security of their data, especially since in our system users can share their files with other users or even make them public to share it with everyone. To handle this, we will be storing the permissions of each file in our metadata DB to reflect what files are visible or modifiable by any user.
+
+
+
+# Ref:
+https://github.com/CrazySquirrel/Outtalent/blob/20205bdd34237e205b5a8e36c10001e646472dab/System%20Design/Problems/Dropbox/README.md

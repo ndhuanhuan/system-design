@@ -226,3 +226,25 @@ If we need to track one million users at any time, total memory we would need wo
 
 So, our ‘Sliding Window with Counters’ algorithm uses 86% less memory than the simple sliding window 
 algorithm.
+
+# Data Sharding and Caching
+
+We can shard based on the ‘UserID’ to distribute the user’s data. For fault tolerance and replication we should 
+use [Consistent Hashing](../017_Glossary_Of_System_Design_Basics/010_Consistent_Hashing/README.md). If we want to have different throttling limits for different APIs, we can choose to 
+shard per user per API. Take the example of [URL Shortener](../001_Designing_a_URL_Shortening_service_like_TinyURL/README.md); we can have different rate limiter for 
+`createURL()` and `deleteURL()` APIs for each user or IP.
+
+If our APIs are partitioned, a practical consideration could be to have a separate (somewhat smaller) rate 
+limiter for each API shard as well. Let’s take the example of our [URL Shortener](../001_Designing_a_URL_Shortening_service_like_TinyURL/README.md) where we want to limit each 
+user not to create more than 100 short URLs per hour. Assuming we are using **[Hash-Based Partitioning](../001_Designing_a_URL_Shortening_service_like_TinyURL/README.md##7-data-partitioning-and-replication)** for 
+our `createURL()` API, we can rate limit each partition to allow a user to create not more than three short URLs 
+per minute in addition to 100 short URLs per hour.
+
+Our system can get huge benefits from caching recent active users. Application servers can quickly check if 
+the cache has the desired record before hitting backend servers. Our rate limiter can significantly benefit 
+from the Write-back cache by updating all counters and timestamps in cache only. The write to the 
+permanent storage can be done at fixed intervals. This way we can ensure minimum latency added to the 
+user’s requests by the rate limiter. The reads can always hit the cache first; which will be extremely useful 
+once the user has hit their maximum limit and the rate limiter will only be reading data without any updates.
+
+Least Recently Used (LRU) can be a reasonable cache eviction policy for our system.

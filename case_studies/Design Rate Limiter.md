@@ -248,3 +248,32 @@ user’s requests by the rate limiter. The reads can always hit the cache first;
 once the user has hit their maximum limit and the rate limiter will only be reading data without any updates.
 
 Least Recently Used (LRU) can be a reasonable cache eviction policy for our system.
+
+# Should we rate limit by IP or by user?
+
+Let’s discuss the pros and cons of using each one of these schemes:
+
+**IP:** In this scheme, we throttle requests per-IP; although it’s not optimal in terms of differentiating between 
+‘good’ and ‘bad’ actors, it’s still better than not have rate limiting at all. The biggest problem with IP based 
+throttling is when multiple users share a single public IP like in an internet cafe or smartphone users that are 
+using the same gateway. One bad user can cause throttling to other users. Another issue could arise while 
+caching IP-based limits, as there are a huge number of IPv6 addresses available to a hacker from even one 
+computer, it’s trivial to make a server run out of memory tracking IPv6 addresses!
+
+**User:** Rate limiting can be done on APIs after user authentication. Once authenticated, the user will be 
+provided with a token which the user will pass with each request. This will ensure that we will rate limit 
+against a particular API that has a valid authentication token. But what if we have to rate limit on the login 
+API itself? The weakness of this rate-limiting would be that a hacker can perform a denial of service attack 
+against a user by entering wrong credentials up to the limit; after that the actual user will not be able to log-
+in.
+
+**___How about if we combine the above two schemes?___**
+
+**Hybrid:** A right approach could be to do both per-IP and per-user rate limiting, as they both have weaknesses 
+when implemented alone, though, this will result in more cache entries with more details per entry, hence 
+requiring more memory and storage.
+
+
+# References
+- https://shahriar.svbtle.com/Understanding-writethrough-writearound-and-writeback-caching-with-python
+- https://github.com/sm2774us/System_Design/blob/0a6e1afd89ed07f4a4566dc6da48afb39ccfe225/009_Designing_an_API_Rate_Limiter/README.md#5-what-are-different-types-of-throttling

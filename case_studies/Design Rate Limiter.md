@@ -193,3 +193,36 @@ If we need to track one million users at any time, total memory we would need wo
 
 Sliding Window Algorithm takes a lot of memory compared to the Fixed Window; this would be a scalability 
 issue. What if we can combine the above two algorithms to optimize our memory usage?
+
+# Sliding Window with Counters
+
+What if we keep track of request counts for each user using multiple fixed time windows, e.g., 1/60th the size 
+of our rate limit’s time window. For example, if we have an hourly rate limit we can keep a count for each 
+minute and calculate the sum of all counters in the past hour when we receive a new request to calculate the 
+throttling limit. This would reduce our memory footprint. Let’s take an example where we rate-limit at 500 
+requests per hour with an additional limit of 10 requests per minute. This means that when the sum of the 
+counters with timestamps in the past hour exceeds the request threshold (500), Kristie has exceeded the rate 
+limit. In addition to that, she can’t send more than ten requests per minute. This would be a reasonable and 
+practical consideration, as none of the real users would send frequent requests. Even if they do, they will see 
+success with retries since their limits get reset every minute.
+
+We can store our counters in a [Redis Hash](https://redis.io/topics/data-types) since it offers incredibly efficient storage for fewer than 100 keys. 
+When each request increments a counter in the hash, it also sets the hash to [expire](https://redis.io/commands/ttl) an hour later. We will 
+normalize each ‘time’ to a minute.
+
+![rate-limiter-sliding-window-with-counters-figure-1](https://github.com/sm2774us/System_Design/raw/0a6e1afd89ed07f4a4566dc6da48afb39ccfe225/009_Designing_an_API_Rate_Limiter/assets/rate-limiter-sliding-window-with-counters-figure-1.PNG)
+
+**How much memory we would need to store all the user data for sliding window with counters?** Let’s 
+assume ‘UserID’ takes 8 bytes. Each epoch time will need 4 bytes, and the Counter would need 2 bytes. Let’s 
+suppose we need a rate limiting of 500 requests per hour. Assume 20 bytes overhead for hash-table and 20 
+bytes for Redis hash. Since we’ll keep a count for each minute, at max, we would need 60 entries for each 
+user. We would need a total of 1.6KB to store one user’s data:
+
+>             **8 + (4 + 2 + 20 (Redis hash overhead)) * 60 + 20 (hash-table overhead) = 1.6KB**
+
+If we need to track one million users at any time, total memory we would need would be 1.6GB:
+
+>                                        **1.6KB * 1 million ~= 1.6GB**
+
+So, our ‘Sliding Window with Counters’ algorithm uses 86% less memory than the simple sliding window 
+algorithm.

@@ -90,3 +90,69 @@ request will be declined. Once a new request arrives, the Web Server first asks 
 will be served or throttled. If the request is not throttled, then it’ll be passed to the API servers.
 
 ![high-level-design-for-rate-limiter](https://github.com/sm2774us/System_Design/raw/0a6e1afd89ed07f4a4566dc6da48afb39ccfe225/009_Designing_an_API_Rate_Limiter/assets/high-level-design-for-rate-limiter.PNG)
+
+# Basic System Design and Algorithm  
+
+Let’s take the example where we want to limit the number of requests per user. Under this scenario, for each 
+unique user, we would keep a count representing how many requests the user has made and a timestamp 
+when we started counting the requests. We can keep it in a hashtable, where the ‘key’ would be the ‘UserID’ 
+and ‘value’ would be a structure containing an integer for the ‘Count’ and an integer for the Epoch time:
+
+![rate-limiter-basic-system-design-and-algorithm-figure-1](https://github.com/sm2774us/System_Design/raw/0a6e1afd89ed07f4a4566dc6da48afb39ccfe225/009_Designing_an_API_Rate_Limiter/assets/rate-limiter-basic-system-design-and-algorithm-figure-1.PNG)
+
+Let’s assume our rate limiter is allowing three requests per minute per user, so whenever a new request 
+comes in, our rate limiter will perform the following steps:
+
+1.  If the ‘UserID’ is not present in the hash-table, insert it, set the ‘Count’ to 1, set ‘StartTime’ to the current time (normalized to a minute), and allow the request.
+1.  Otherwise, find the record of the ‘UserID’ and if `CurrentTime – StartTime >= 1 min`, set the ‘StartTime’ to the current time, ‘Count’ to 1, and allow the request.
+1.  If `CurrentTime - StartTime <= 1 min` and
+    - If ‘Count < 3’, increment the Count and allow the request.
+    - If ‘Count >= 3’, reject the request.
+
+![rate-limiter-basic-system-design-and-algorithm-figure-2](https://github.com/sm2774us/System_Design/raw/0a6e1afd89ed07f4a4566dc6da48afb39ccfe225/009_Designing_an_API_Rate_Limiter/assets/rate-limiter-basic-system-design-and-algorithm-figure-2.PNG)
+
+**What are some of the problems with our algorithm?**
+
+1.  This is a **Fixed Window** algorithm since we’re resetting the ‘StartTime’ at the end of every minute, which 
+    means it can potentially allow twice the number of requests per minute. Imagine if Kristie sends three 
+    requests at the last second of a minute, then she can immediately send three more requests at the very 
+    first second of the next minute, resulting in 6 requests in the span of two seconds. The solution to this 
+    problem would be a sliding window algorithm which we’ll discuss later.
+![rate-limiter-basic-system-design-and-algorithm-figure-3](https://github.com/sm2774us/System_Design/raw/0a6e1afd89ed07f4a4566dc6da48afb39ccfe225/009_Designing_an_API_Rate_Limiter/assets/rate-limiter-basic-system-design-and-algorithm-figure-3.PNG)
+1.  **Atomicity:** In a distributed environment, the “read-and-then-write” behavior can create a race condition. 
+    Imagine if Kristie’s current ‘Count’ is “2” and that she issues two more requests. If two separate processes 
+    served each of these requests and concurrently read the Count before either of them updated it, each 
+    process would think that Kristie could have one more request and that she had not hit the rate limit.
+![rate-limiter-basic-system-design-and-algorithm-figure-4](https://github.com/sm2774us/System_Design/raw/0a6e1afd89ed07f4a4566dc6da48afb39ccfe225/009_Designing_an_API_Rate_Limiter/assets/rate-limiter-basic-system-design-and-algorithm-figure-4.PNG)
+
+If we are using [Redis](https://en.wikipedia.org/wiki/Redis) to store our key-value, one solution to resolve the atomicity problem is to use [Redis lock](https://redis.io/topics/distlock) 
+for the duration of the read-update operation. This, however, would come at the expense of slowing down 
+concurrent requests from the same user and introducing another layer of complexity. We can use 
+[Memcached](https://en.wikipedia.org/wiki/Memcached), but it would have comparable complications.
+
+If we are using a simple hash-table, we can have a custom implementation for ‘locking’ each record to solve 
+our atomicity problems.
+
+**How much memory would we need to store all of the user data?** Let’s assume the simple solution where 
+we are keeping all of the data in a hash-table.
+
+Let’s assume ‘UserID’ takes 8 bytes. Let’s also assume a 2 byte ‘Count’, which can count up to 65k, is sufficient 
+for our use case. Although epoch time will need 4 bytes, we can choose to store only the minute and second 
+part, which can fit into 2 bytes. Hence, we need a total of 12 bytes to store a user’s data:
+
+>                                            **8 + 2 + 2 = 12 bytes**
+
+Let’s assume our hash-table has an overhead of 20 bytes for each record. If we need to track one million users 
+at any time, the total memory we would need would be 32MB:
+
+>                                 **(12 + 20) bytes * 1 million => 32MB**
+
+If we assume that we would need a 4-byte number to lock each user’s record to resolve our atomicity 
+problems, we would require a total 36MB memory.
+
+This can easily fit on a single server; however we would not like to route all of our traffic through a single 
+machine. Also, if we assume a rate limit of 10 requests per second, this would translate into 10 million QPS for 
+our rate limiter! This would be too much for a single server. Practically, we can assume we would use a Redis 
+or Memcached kind of a solution in a distributed setup. We’ll be storing all the data in the remote Redis 
+servers and all the Rate Limiter servers will read (and update) these servers before serving or throttling any 
+request.

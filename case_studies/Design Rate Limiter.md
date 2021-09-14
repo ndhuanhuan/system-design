@@ -82,3 +82,11 @@ which the request is made plus the time window length. For example, if there are
 300th millisecond and 400th millisecond of a second, we’ll count them as two messages from the 
 300th millisecond of that second up to the 300th millisecond of next second. In the above diagram, keeping 
 two messages a second, we’ll throttle ‘m3’ and ‘m4’.
+
+# High level design for Rate Limiter
+
+Rate Limiter will be responsible for deciding which request will be served by the API servers and which 
+request will be declined. Once a new request arrives, the Web Server first asks the Rate Limiter to decide if it 
+will be served or throttled. If the request is not throttled, then it’ll be passed to the API servers.
+
+![high-level-design-for-rate-limiter](https://github.com/sm2774us/System_Design/raw/0a6e1afd89ed07f4a4566dc6da48afb39ccfe225/009_Designing_an_API_Rate_Limiter/assets/high-level-design-for-rate-limiter.PNG)

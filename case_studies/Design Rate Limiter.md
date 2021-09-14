@@ -16,3 +16,19 @@ lower-priority requests, and we want to make sure that it doesn’t affect the
 high-priority traffic. For example, users sending a high volume of requests
 for analytics data should not be allowed to hamper critical transactions for
 other users.
+- Security: By limiting the number of the second-factor attempts (in 2-factor
+auth) that the users are allowed to perform, for example, the number of
+times they’re allowed to try with a wrong password.
+- To prevent abusive behavior and bad design practices: Without API
+limits, developers of client applications would use sloppy development
+tactics, for example requesting the same information over and over again.
+- To keep costs and resource usage under control: Services are generally
+designed for normal input behavior, for example, a user writing a single
+post in a minute. Computers could easily push thousands/second through
+an API. Rate limiter enables controls on service APIs.
+- Revenue: Certain services might want to limit operations based on the tier
+of their customer’s service, and thus create a revenue model based on rate
+limiting. There could be default limits for all the APIs a service offers. To go
+beyond that, the user has to buy higher limits
+- To eliminate spikiness in traffic: So that a service stays up for everyone
+else.

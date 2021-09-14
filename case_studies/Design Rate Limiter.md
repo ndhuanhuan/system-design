@@ -32,3 +32,36 @@ limiting. There could be default limits for all the APIs a service offers. To go
 beyond that, the user has to buy higher limits
 - To eliminate spikiness in traffic: So that a service stays up for everyone
 else.
+
+# Requirements and Goals of the System
+## Functional Requirements:
+1. Limit the number of requests an entity can send to an API within a time
+window, e.g., 15 requests per second.
+2. The APIs are accessible through a cluster, so the rate limit should be
+considered across different servers. The user should get an error message
+whenever the defined threshold is crossed within a single server or across a
+combination of servers.
+## Non-Functional Requirements:
+1. The system should be highly available. The rate limiter should always work
+since it protects our service from external attacks.
+2. Our rate limiter should not introduce substantial latencies affecting the
+user experience.
+
+# How to do Rate Limiting?
+Rate Limiting is a process that is used to define the rate and speed at which
+consumers can access APIs. Throttling is the process of controlling the usage of
+the APIs by customers during a given period. Throttling can be defined at the
+application level and/or API level. When a throttle limit is crossed, the server
+returns “429” as HTTP status to the user with message content as “Too many
+requests”.
+
+# What are different types of throttling
+- Hard Throttling: The number of API requests cannot exceed the throttle limit.
+- Soft Throttling: In this type, we can set the API request limit to exceed a certain
+percentage. For example, if we have rate-limit of 100 messages a minute and 10%
+exceed limit. Our rate limiter will allow up to 110 messages per minute.
+- Elastic or Dynamic Throttling : Under Elastic throttling, the number of requests
+can go beyond the threshold if the system has some resources available. For
+example, if a user is allowed only 100 messages a minute, we can let the user send
+more than 100 messages a minute if there are free resources available in the
+system.

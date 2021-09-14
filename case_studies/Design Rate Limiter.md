@@ -65,3 +65,20 @@ can go beyond the threshold if the system has some resources available. For
 example, if a user is allowed only 100 messages a minute, we can let the user send
 more than 100 messages a minute if there are free resources available in the
 system.
+
+# What are different types of algorithms used for Rate Limiting?
+Following are the two types of algorithms used for Rate Limiting:
+
+**Fixed Window Algorithm:** In this algorithm, the time window is considered from the start of the time-unit to 
+the end of the time-unit. For example, a period would be considered 0-60 seconds for a minute irrespective of 
+the time frame at which the API request has been made. In the diagram below, there are two messages 
+between 0-1 second and three messages between 1-2 seconds. If we have a rate limiting of two messages a 
+second, this algorithm will throttle only ‘m5’.
+
+![rate-limiting-algorithms-fixed-window-and-rolling-window](https://github.com/sm2774us/System_Design/raw/0a6e1afd89ed07f4a4566dc6da48afb39ccfe225/009_Designing_an_API_Rate_Limiter/assets/rate-limiting-algorithms-fixed-window-and-rolling-window.PNG)
+
+**Rolling Window Algorithm:** In this algorithm, the time window is considered from the fraction of the time at 
+which the request is made plus the time window length. For example, if there are two messages sent at the 
+300th millisecond and 400th millisecond of a second, we’ll count them as two messages from the 
+300th millisecond of that second up to the 300th millisecond of next second. In the above diagram, keeping 
+two messages a second, we’ll throttle ‘m3’ and ‘m4’.

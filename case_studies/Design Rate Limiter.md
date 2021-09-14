@@ -157,3 +157,39 @@ our rate limiter! This would be too much for a single server. Practically, we ca
 or Memcached kind of a solution in a distributed setup. We’ll be storing all the data in the remote Redis 
 servers and all the Rate Limiter servers will read (and update) these servers before serving or throttling any 
 request.
+
+# Sliding Window algorithm
+
+We can maintain a sliding window if we can keep track of each request per user. We can store the timestamp 
+of each request in a [Redis Sorted Set](https://redis.io/topics/data-types) in our ‘value’ field of hash-table.
+
+![rate-limiter-sliding-window-algorithm-figure-1](https://github.com/sm2774us/System_Design/raw/0a6e1afd89ed07f4a4566dc6da48afb39ccfe225/009_Designing_an_API_Rate_Limiter/assets/rate-limiter-sliding-window-algorithm-figure-1.PNG)
+
+Let’s assume our rate limiter is allowing three requests per minute per user, so, whenever a new request 
+comes in, the Rate Limiter will perform following steps:
+
+1.  Remove all the timestamps from the Sorted Set that are older than “CurrentTime - 1 minute”.
+1.  Count the total number of elements in the sorted set. Reject the request if this count is greater than our 
+    throttling limit of “3”.
+1.  Insert the current time in the sorted set and accept the request.
+
+![rate-limiter-sliding-window-algorithm-figure-2](https://github.com/sm2774us/System_Design/raw/0a6e1afd89ed07f4a4566dc6da48afb39ccfe225/009_Designing_an_API_Rate_Limiter/assets/rate-limiter-sliding-window-algorithm-figure-2.PNG)
+
+**How much memory would we need to store all of the user data for sliding window?** Let’s assume ‘UserID’ 
+takes 8 bytes. Each epoch time will require 4 bytes. Let’s suppose we need a rate limiting of 500 requests per 
+hour. Let’s assume 20 bytes overhead for hash-table and 20 bytes overhead for the Sorted Set. At max, we 
+would need a total of 12KB to store one user’s data:
+
+>                **8 + (4 + 20 (sorted set overhead)) * 500 + 20 (hash-table overhead) = 12KB**
+
+Here we are reserving 20 bytes overhead per element. In a sorted set, we can assume that we need at least 
+two pointers to maintain order among elements — one pointer to the previous element and one to the next 
+element. On a 64bit machine, each pointer will cost 8 bytes. So we will need 16 bytes for pointers. We added 
+an extra word (4 bytes) for storing other overhead.
+
+If we need to track one million users at any time, total memory we would need would be 12GB:
+
+>                                         **12KB * 1 million ~= 12GB**
+
+Sliding Window Algorithm takes a lot of memory compared to the Fixed Window; this would be a scalability 
+issue. What if we can combine the above two algorithms to optimize our memory usage?

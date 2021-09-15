@@ -333,7 +333,7 @@ Token Bucket is widely used due to its simplicity.
 
 * A token bucket is a **container that has a pre-defined capacity**. The tokens are put in the bucket at preset rates peridocially. Once the bucket is full, no more tokens are added.
 
-![](2021-08-29-19-15-13.png)
+![](![image](https://user-images.githubusercontent.com/3341457/133365972-b584af38-174c-4058-ab40-386d23e1a154.png))
 
 * **Each request consumes one token**. When a request arrives, we check if there are enough tokens in the bucket.
   * If there are enough tokens, we take one token out for each request, and the request goes through.

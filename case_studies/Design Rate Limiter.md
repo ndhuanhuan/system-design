@@ -303,6 +303,20 @@ code?
 
 **Interviewer**: Yes.
 
+# General Guideline
+- Evaluate your current technology stack, such as programming language, cache service,
+etc. Make sure your current programming language is efficient to implement rate limiting
+on the server-side.
+- Identify the rate limiting algorithm that fits your business needs. When you implement
+everything on the server-side, you have full control of the algorithm. However, your
+choice might be limited if you use a third-party gateway.
+- If you have already used microservice architecture and included an API gateway in the
+design to perform authentication, IP whitelisting, etc., you may add a rate limiter to the
+API gateway.
+- Building your own rate limiting service takes time. If you do not have enough
+engineering resources to implement a rate limiter, a commercial API gateway is a better
+option.
+
 # References
 - https://shahriar.svbtle.com/Understanding-writethrough-writearound-and-writeback-caching-with-python
 - https://github.com/sm2774us/System_Design/blob/0a6e1afd89ed07f4a4566dc6da48afb39ccfe225/009_Designing_an_API_Rate_Limiter/README.md#5-what-are-different-types-of-throttling

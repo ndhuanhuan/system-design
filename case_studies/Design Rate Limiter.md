@@ -322,7 +322,11 @@ option.
 https://github.com/Archive-42/september-downloads-archive/blob/2a6354a3215d35aae5c8ce4aa1944d9a72b26e80/lambda-ds-prac/algorithms/rate-limiting/token-bucket/README.md
 
 ## Leaking bucket algorithm
+Shopify, an ecommerce company, uses leaky buckets for rate-limiting
 https://github.com/Archive-42/september-downloads-archive/tree/2a6354a3215d35aae5c8ce4aa1944d9a72b26e80/lambda-ds-prac/algorithms/rate-limiting/leaking-bucket
+
+## Fixed window counter algorithm
+https://github.com/Archive-42/september-downloads-archive/tree/2a6354a3215d35aae5c8ce4aa1944d9a72b26e80/lambda-ds-prac/algorithms/rate-limiting/fixed-window-counter
 
 # References
 - https://shahriar.svbtle.com/Understanding-writethrough-writearound-and-writeback-caching-with-python

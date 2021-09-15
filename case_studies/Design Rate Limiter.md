@@ -328,6 +328,14 @@ https://github.com/Archive-42/september-downloads-archive/tree/2a6354a3215d35aae
 ## Fixed window counter algorithm
 https://github.com/Archive-42/september-downloads-archive/tree/2a6354a3215d35aae5c8ce4aa1944d9a72b26e80/lambda-ds-prac/algorithms/rate-limiting/fixed-window-counter
 
+## Sliding window log algorithm
+https://github.com/Archive-42/september-downloads-archive/tree/2a6354a3215d35aae5c8ce4aa1944d9a72b26e80/lambda-ds-prac/algorithms/rate-limiting/sliding-window-log
+
+## Sliding Window Counter
+https://github.com/Archive-42/september-downloads-archive/tree/2a6354a3215d35aae5c8ce4aa1944d9a72b26e80/lambda-ds-prac/algorithms/rate-limiting/sliding-window-counter
+
+
+
 # References
 - https://shahriar.svbtle.com/Understanding-writethrough-writearound-and-writeback-caching-with-python
 - https://github.com/sm2774us/System_Design/blob/0a6e1afd89ed07f4a4566dc6da48afb39ccfe225/009_Designing_an_API_Rate_Limiter/README.md#5-what-are-different-types-of-throttling

@@ -341,3 +341,4 @@ https://github.com/Salah856/System-Design/blob/c757c919a7d498293b77e7664c8f3cbed
 # References
 - https://shahriar.svbtle.com/Understanding-writethrough-writearound-and-writeback-caching-with-python
 - https://github.com/sm2774us/System_Design/blob/0a6e1afd89ed07f4a4566dc6da48afb39ccfe225/009_Designing_an_API_Rate_Limiter/README.md#5-what-are-different-types-of-throttling
+- Lyft rate limiter: https://github.com/envoyproxy/ratelimit

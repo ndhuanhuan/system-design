@@ -334,6 +334,8 @@ https://github.com/Archive-42/september-downloads-archive/tree/2a6354a3215d35aae
 ## Sliding Window Counter
 https://github.com/Archive-42/september-downloads-archive/tree/2a6354a3215d35aae5c8ce4aa1944d9a72b26e80/lambda-ds-prac/algorithms/rate-limiting/sliding-window-counter
 
+## Insider books version
+https://github.com/Salah856/System-Design/blob/c757c919a7d498293b77e7664c8f3cbed850510b/Design%20Rate%20Limiter.md
 
 
 # References

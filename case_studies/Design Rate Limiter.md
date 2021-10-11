@@ -337,6 +337,15 @@ https://github.com/Archive-42/september-downloads-archive/tree/2a6354a3215d35aae
 ## Insider books version
 https://github.com/Salah856/System-Design/blob/c757c919a7d498293b77e7664c8f3cbed850510b/Design%20Rate%20Limiter.md
 
+## Issues with distributed rate limiter
+### Race Condition
+### Synchonization
+Synchronization issue - A better approach is to use centralized data stores like Redis
+### Performance optimization
+- First, multi-data center setup is crucial for a rate limiter because latency is high for users
+located far away from the data center.
+- Second, synchronize data with an eventual consistency model.
+
 ## TODOs
 Locks are the most obvious solution for solving race condition. However, locks will
 significantly slow down the system. Two strategies are commonly used to solve the problem:

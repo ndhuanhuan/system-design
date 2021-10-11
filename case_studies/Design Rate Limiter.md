@@ -337,6 +337,11 @@ https://github.com/Archive-42/september-downloads-archive/tree/2a6354a3215d35aae
 ## Insider books version
 https://github.com/Salah856/System-Design/blob/c757c919a7d498293b77e7664c8f3cbed850510b/Design%20Rate%20Limiter.md
 
+## TODOs
+Locks are the most obvious solution for solving race condition. However, locks will
+significantly slow down the system. Two strategies are commonly used to solve the problem:
+Lua script [13] and sorted sets data structure in Redis [8]. For readers interested in these
+strategies, refer to the corresponding reference materials [8] [13].
 
 # References
 - https://shahriar.svbtle.com/Understanding-writethrough-writearound-and-writeback-caching-with-python

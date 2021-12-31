@@ -173,3 +173,5 @@ To avoid duplicated discussion, only high-level talking points are listed below:
 
 # Reading Materials (Great)
 - https://liuzhenglaichn.gitbook.io/system-design/news-feed/design-a-news-feed-system
+- How News Feed Works: https://www.facebook.com/help/327131014036297/
+- Friend of Friend recommendations Neo4j and SQL Sever:http://geekswithblogs.net/brendonpage/archive/2015/10/26/friend-of-friendrecommendations-with-neo4j.aspx

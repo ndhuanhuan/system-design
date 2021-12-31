@@ -56,7 +56,7 @@ The API to retrieve news feed is `GET /v1/me/feed` and receives as param `auth_t
 
 ### Feed publishing flow
 
-![](2021-09-28-10-29-12.png)
+![](https://github.com/herrera-ignacio/architect-handbook/raw/d5b7666f1b78f8a3a33eaffe5a4f7c5bb2486399/system-design/case-studies/news-feed/2021-09-28-10-29-12.png)
 
 * **User**: A user can view news feeds on a browser or mobile app. A user makes a post with content *"Hello"* through API: `POST /v1/me/feed?content=Hello&auth_token={auth_token}`.
 
@@ -72,7 +72,7 @@ The API to retrieve news feed is `GET /v1/me/feed` and receives as param `auth_t
 
 ### Newsfeed building
 
-![](2021-09-28-10-36-19.png)
+![](https://github.com/herrera-ignacio/architect-handbook/raw/d5b7666f1b78f8a3a33eaffe5a4f7c5bb2486399/system-design/case-studies/news-feed/2021-09-28-10-36-19.png)
 
 * **User**: A user sends a request to retrieve his news feed: `GET /v1/me/feed`.
 
@@ -86,7 +86,7 @@ The API to retrieve news feed is `GET /v1/me/feed` and receives as param `auth_t
 
 We will focus on two components: *web servers* and *fanout service*.
 
-![](2021-09-28-10-49-08.png)
+![](https://github.com/herrera-ignacio/architect-handbook/raw/d5b7666f1b78f8a3a33eaffe5a4f7c5bb2486399/system-design/case-studies/news-feed/2021-09-28-10-49-08.png)
 
 #### Web servers
 
@@ -109,7 +109,7 @@ Fanout is the process of delivering a post to all friends. Two types of fanout m
 
 We adopt a **hybrid approach**: Since fetching the news feed fast is crucial, we use a push model for the majority of users. For celebrities or users who have many friends/followers, we let followers pull news content on-demand to avoid system overload. *Consistent hashing* is a useful technique to mitigate the *hoyket problem* as it helps to distribute requests/data more evenly.
 
-![](2021-09-28-10-55-42.png)
+![](https://github.com/herrera-ignacio/architect-handbook/raw/d5b7666f1b78f8a3a33eaffe5a4f7c5bb2486399/system-design/case-studies/news-feed/2021-09-28-10-55-42.png)
 
 The fanout service works as follows:
 
@@ -125,7 +125,7 @@ The fanout service works as follows:
 
 ### Newsfeed retrieval deep dive
 
-![](2021-09-28-11-02-58.png)
+![](https://github.com/herrera-ignacio/architect-handbook/raw/d5b7666f1b78f8a3a33eaffe5a4f7c5bb2486399/system-design/case-studies/news-feed/2021-09-28-11-02-58.png)
 
 > Media content are stored in CDN for fast retrieval.
 
@@ -145,7 +145,7 @@ The fanout service works as follows:
 
 Cache is extremely important for a news feed system. We device the cache tier into 5 layers:
 
-![](2021-09-28-11-10-14.png)
+![](https://github.com/herrera-ignacio/architect-handbook/raw/d5b7666f1b78f8a3a33eaffe5a4f7c5bb2486399/system-design/case-studies/news-feed/2021-09-28-11-10-14.png)
 
 * **News feed**: Stores IDs of news feed.
 * **Content**: Every post data. Popular content is stored in hot cache.

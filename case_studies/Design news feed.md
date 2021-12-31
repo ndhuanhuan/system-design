@@ -169,3 +169,7 @@ To avoid duplicated discussion, only high-level talking points are listed below:
 * Support multiple data centers
 * Lose couple components with message queues
 * Monitor key metrics. For instance, QPS during peak hours and latency while users refreshing their news feed are interesting to monitor.
+
+
+# Reading Materials (Great)
+- https://liuzhenglaichn.gitbook.io/system-design/news-feed/design-a-news-feed-system

@@ -148,3 +148,6 @@ __How can we return most popular places within a given radius?__ Let’s assume 
 
 Remember that we didn’t build our system to update place’s data frequently. With this design, how can we modify the popularity of a place in our QuadTree? Although we can search a place and update its popularity in the QuadTree, it would take a lot of resources and can affect search requests and system throughput. Assuming the popularity of a place is not expected to reflect in the system within a few hours, we can decide to update it once or twice a day, especially when the load on the system is minimum.
 
+
+# Good Resources
+https://www.1point3acres.com/bbs/thread-698566-1-1.html

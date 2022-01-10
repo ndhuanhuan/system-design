@@ -73,23 +73,23 @@ For SMS messages, third party SMS services like *Twilio*, *Nexmo*, and many othe
 
 Although companies can set up their own email servers, many of them opt for commercial email services such as *Sendgrid* and *Mailchimp*.
 
-![](2021-09-27-22-32-59.png)
+![](https://github.com/herrera-ignacio/architect-handbook/raw/3d6c142e1528b9d9c497a2db72d0251643a1c438/system-design/case-studies/notification-system/2021-09-27-22-32-59.png)
 
 ### Contact info gathering flow
 
 To send notifications, we need to gather mobile device tokens, phone numbers, or email addresses. When a ser installs our app or signs up for the first time, API servers collect user contact info and store it in the database.
 
-![](2021-09-27-22-36-47.png)
+![](https://github.com/herrera-ignacio/architect-handbook/raw/3d6c142e1528b9d9c497a2db72d0251643a1c438/system-design/case-studies/notification-system/2021-09-27-22-36-47.png)
 
 These are implified database tables to store contact info. Email addresses and phone numbers are stored in the *user* table, whereas device tokens are stored in the *device* table. A user can have multiple devices, indicating that a push notification can be sent to all the user devices.
 
-![](2021-09-27-22-38-28.png)
+![](https://github.com/herrera-ignacio/architect-handbook/raw/3d6c142e1528b9d9c497a2db72d0251643a1c438/system-design/case-studies/notification-system/2021-09-27-22-38-28.png)
 
 ### Notification sending/receiving flow
 
 #### High-level design
 
-![](2021-09-27-22-39-26.png)
+![](https://github.com/herrera-ignacio/architect-handbook/raw/3d6c142e1528b9d9c497a2db72d0251643a1c438/system-design/case-studies/notification-system/2021-09-27-22-39-26.png)
 
 * **Service 1 to N**: A service can be a micro-service, a cron job, or a distributed system that triggers notification sending events. For example, a billing service sends emails to remind customers of their due payment or a shopping website tells customer that their packages will be delivered tomorrow via SMS messages.
 

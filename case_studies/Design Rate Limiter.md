@@ -3,6 +3,7 @@
 ### Redis Token Bucket
 - https://engineering.classdojo.com/blog/2015/02/06/rolling-rate-limiter/
 - Issue: Refill token is write heavy
+- https://gist.github.com/ptarjan/e38f45f2dfe601419ca3af937fff574d#request-rate-limiter (Important: to address "race condition")
 ### Redis Imporved Token Bucket
 - Each user has a two keys associated with them: the token bucket, and a timestamp of the last time the bucket was refilled.
 - We calculate how many tokens the user should have been granted since that last request.

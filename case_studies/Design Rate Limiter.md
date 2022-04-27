@@ -1,5 +1,6 @@
 # My Own Summary
 ## Key Notes
+## Addressing Race Condition
 ### Redis Token Bucket
 - https://engineering.classdojo.com/blog/2015/02/06/rolling-rate-limiter/
 - Issue: Refill token is write heavy
@@ -15,6 +16,11 @@
 - We add the current timestamp to the set
 - We set a TTL equal to the rate-limiting interval on the set
 - After all operations are completed, we count the number of fetched elements. If it exceeds the limit, we don’t allow the action.
+
+### Addressing Synchronise Issue
+- bad approach: sticky session
+- good approach: Make checks locally in memory to make these rate limit determinations with minimal latency. To make local checks, relax the rate check conditions and use an eventually consistent model. For example, each node can create a data sync cycle that will synchronize with the centralized data store. Each node periodically pushes a counter increment for each consumer and window to the datastore. These pushes atomically update the values. The node can then retrieve the updated values to update its in-memory version. This cycle of converge → diverge → reconverge among nodes in the cluster is eventually consistent. https://konghq.com/blog/how-to-design-a-scalable-rate-limiting-algorithm#:~:text=Rate%20limiting%20protects%20your%20APIs,requests%20that%20starve%20other%20consumers.
+- Addtional readings: https://medium.com/double-pointer/system-design-interview-api-rate-limiter-9b8091e75768
 
 # Definetion
 A rate

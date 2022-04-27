@@ -1,7 +1,19 @@
 # My Own Summary
 ## Key Notes
-
-
+### Redis Token Bucket
+- https://engineering.classdojo.com/blog/2015/02/06/rolling-rate-limiter/
+- Issue: Refill token is write heavy
+### Redis Imporved Token Bucket
+- Each user has a two keys associated with them: the token bucket, and a timestamp of the last time the bucket was refilled.
+- We calculate how many tokens the user should have been granted since that last request.
+- Issue: Cannot achieve atomic action, since need to read timestamp first.  one to get the last timestamp, and one to set the new token count
+### Redis A better approach – sorted sets
+- Each user has a sorted set associated with them. The keys and values are identical, and equal to the (microsecond) times when actions were attempted.
+- When a user attempts to perform an action, we first drop all elements of the set which occured before one interval ago.
+- We fetch all elements of the se
+- We add the current timestamp to the set
+- We set a TTL equal to the rate-limiting interval on the set
+- After all operations are completed, we count the number of fetched elements. If it exceeds the limit, we don’t allow the action.
 
 # Definetion
 A rate

@@ -11,7 +11,7 @@
 ### Redis A better approach – sorted sets (Important: to address "race condition")
 - Each user has a sorted set associated with them. The keys and values are identical, and equal to the (microsecond) times when actions were attempted.
 - When a user attempts to perform an action, we first drop all elements of the set which occured before one interval ago.
-- We fetch all elements of the se
+- We fetch all elements of the set
 - We add the current timestamp to the set
 - We set a TTL equal to the rate-limiting interval on the set
 - After all operations are completed, we count the number of fetched elements. If it exceeds the limit, we don’t allow the action.

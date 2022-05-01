@@ -16,6 +16,9 @@
 - We add the current timestamp to the set
 - We set a TTL equal to the rate-limiting interval on the set
 - After all operations are completed, we count the number of fetched elements. If it exceeds the limit, we don’t allow the action.
+https://engineering.classdojo.com/blog/2015/02/06/rolling-rate-limiter/
+The advantage of this approach is that all Redis operations can be performed as an atomic action, using the MULTI command. This means that if two processes both try to perform an action for the same user, there’s no way for them to not have the latest information, preventing the problem outlined above
+
 
 ### Addressing Synchronise Issue
 - bad approach: sticky session

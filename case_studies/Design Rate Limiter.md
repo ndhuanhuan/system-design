@@ -1,8 +1,9 @@
 # My Own Summary
 ## Key Notes
 ## Addressing Race Condition
-### TO DO
+### Additional Readings
 - watch https://www.youtube.com/watch?v=FU4WlwfS3G0
+- https://blog.cloudflare.com/counting-things-a-lot-of-different-things/
 ### Redis Token Bucket
 - https://engineering.classdojo.com/blog/2015/02/06/rolling-rate-limiter/
 - Issue: Refill token is write heavy

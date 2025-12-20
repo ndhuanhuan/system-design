@@ -47,3 +47,12 @@ A good example on how to balance write/load message to broadcast
 ###  Amazon (p15)
 
 Special focus on tail latencies as users with slower response usually have more data in the application, which means they are high value customer.
+## Summary
+
+This chapter introduces the foundational concepts for building reliable, scalable, and maintainable applications:
+
+- **Reliability:** Systems must tolerate hardware, software, and human faults to ensure continuous operation.
+- **Scalability:** Systems should handle increased load by scaling up (stronger machines) or scaling out (more machines), with performance measured by throughput and response time percentiles.
+- **Maintainability:** Systems should be easy to operate, simple to understand, and adaptable to change.
+
+Real-world examples like Twitter and Amazon illustrate how these principles are applied to address different user needs and performance challenges, especially focusing on tail latencies and system design trade-offs.

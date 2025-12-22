@@ -578,6 +578,166 @@ After all is said and done, you might have a design that looks something like th
 
 ![Final Design](design_instagram_images/image-2.png)
 
+## Quick Review & Key Takeaways
+
+### Core Components & Architecture
+
+**Microservices:**
+- **Post Service**: Handles post creation, metadata storage, coordinates media uploads
+- **Follow Service**: Manages follow/unfollow operations, queries follower relationships
+- **Feed Service**: Generates and serves user feeds (hybrid fan-out approach)
+- **Feed Fan-out Service**: Asynchronously updates follower feeds when posts are created
+
+**Data Stores:**
+- **DynamoDB/PostgreSQL**: Stores post metadata, user info, follower relationships
+- **Redis (ZSET)**: Precomputed feeds (`feed:{user_id}`), post metadata cache
+- **S3**: Blob storage for photos/videos
+- **CDN (CloudFront)**: Global media distribution with edge caching
+
+### Database Schema Essentials
+
+**Followers Table:**
+```
+Partition Key: followerId
+Sort Key: followedId
+```
+Example: `user123` following `leomessi` creates one row with `followerId=user123`, `followedId=leomessi`
+
+**Posts Table:**
+```
+Partition Key: userId
+Sort Key: createdAt#postId (composite)
+Fields: postId, caption, s3_url, uploadStatus
+```
+
+**Global Secondary Index (GSI) on Followers:**
+```
+Partition Key: followedId
+Sort Key: followerId
+```
+Used to efficiently find all followers of a user for fan-out on write.
+
+### Feed Generation Strategies
+
+| Approach | When to Use | Pros | Cons |
+|----------|-------------|------|------|
+| **Fan-out on Read** | Small scale, < 1K users | Simple implementation | Slow reads, expensive, read amplification |
+| **Fan-out on Write** | Medium scale | Fast reads (single Redis query) | Write amplification, celebrity problem |
+| **Hybrid** (✅ Best) | Large scale (500M DAU) | Fast reads + manageable writes | Complexity, inconsistent UX for celeb followers |
+
+**Hybrid Approach Details:**
+- Threshold: 100,000 followers
+- Users < 100K: Precompute feeds (fan-out on write)
+- Celebrities > 100K: Real-time merge (fan-out on read)
+- Feed request: Redis precomputed + DB query for celebrity posts + merge
+
+### Media Upload Flow
+
+1. Client calls `POST /posts` → receives `postId` + pre-signed S3 URL
+2. Client uploads to S3 using **multipart upload** (for files > 2GB)
+3. S3 event notification → Lambda → Updates post status to "complete"
+4. Post gets added to message queue for feed fan-out
+5. Feed fan-out service updates followers' Redis feeds
+
+**Why multipart upload?**
+- HTTP request limit < 2GB, videos can be 4GB
+- Better reliability (retry individual chunks)
+- Parallel uploads for faster completion
+
+### Media Delivery Optimization
+
+**Three-tier approach:**
+1. **Direct S3** (❌ Bad): High latency, expensive, no optimization
+2. **CDN** (✅ Good): Global edge caching, reduced latency
+3. **CDN + Dynamic Optimization** (✅ Best): Multiple resolutions, WebP format, adaptive streaming
+
+**Key optimization:**
+- Generate multiple variants on upload (thumbnail, mobile, desktop, HD)
+- Serve appropriate variant based on device/network
+- Cache hot content more aggressively at edge locations
+
+### Scale Calculations
+
+**Storage:**
+- Media: 100M posts/day × 2MB = 200TB/day → 750PB over 10 years
+- Metadata: 100M posts/day × 1KB = 100GB/day
+- Solution: Move cold data to cheaper storage (S3 → Glacier)
+
+**Throughput:**
+- 500M DAU × 5 feed refreshes = 2.5B feed generations/day
+- Peak: ~150K feed requests/second
+- Solution: Horizontal scaling with auto-scaling groups + load balancers
+
+### Redis Data Structures
+
+**Feed Cache (ZSET):**
+```
+Key: feed:{user_id}
+Members: postId1, postId2, postId3...
+Scores: timestamps (for chronological ordering)
+```
+
+**Post Metadata Cache (HASH):**
+```
+Key: post:{postId}
+Fields: userId, caption, s3_url, createdAt
+TTL: Short-lived (e.g., 15 minutes)
+```
+
+**Durability:** Use Redis Sentinel + AOF persistence to prevent data loss on node failures.
+
+### Common Interview Pitfalls to Avoid
+
+❌ **Don't:**
+- Store binary data in DynamoDB/PostgreSQL (use S3)
+- Upload 4GB videos in a single HTTP request
+- Fan-out to millions of followers synchronously
+- Serve high-res images to mobile users
+- Forget to mention indexing strategies
+- Assume Redis is durable without persistence config
+
+✅ **Do:**
+- Explain trade-offs between different approaches
+- Mention both partition keys AND sort keys for DynamoDB
+- Address the celebrity problem proactively
+- Discuss horizontal scaling strategies
+- Consider global distribution (CDN)
+- Plan for failure modes (Redis down, S3 outage)
+
+### Key APIs
+
+```
+POST /posts
+  → Returns: postId + pre-signed S3 URL
+
+POST /follows
+  Body: { "followedId": "123" }
+  → followerId extracted from auth token
+
+GET /feed?cursor={cursor}&limit={page_size}
+  → Returns: Post[] + next_cursor
+```
+
+### Interview Flow Recommendation
+
+1. **Start with requirements** (5 min): Functional + Non-functional + Scale
+2. **Core entities** (2 min): User, Post, Follow, Media
+3. **API design** (3 min): POST /posts, POST /follows, GET /feed
+4. **High-level design** (10 min): Basic architecture for each requirement
+5. **Deep dive #1: Feed generation** (10 min): Fan-out on read → write → hybrid
+6. **Deep dive #2: Media handling** (10 min): Multipart upload + CDN + optimization
+7. **Deep dive #3: Scaling** (5 min): Storage tiers, horizontal scaling, calculations
+
+### Quick Facts to Memorize
+
+- **Scale**: 500M DAU, 100M posts/day
+- **Latency target**: < 500ms for feed requests
+- **Celebrity threshold**: 100,000 followers
+- **Max file sizes**: 8MB photos, 4GB videos
+- **HTTP limit**: < 2GB per request
+- **DynamoDB batch limit**: 100 items, 16MB
+- **Consistency**: Eventual (up to 2 minutes acceptable)
+
 ## [What is Expected at Each Level?](https://www.hellointerview.com/blog/the-system-design-interview-what-is-expected-at-each-level)
 
 So, what am I looking for at each level?

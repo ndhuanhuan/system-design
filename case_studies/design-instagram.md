@@ -206,6 +206,24 @@ Importantly, this is a unidirectional relationship. For example, I follow @leome
 
 We can model this relationship with just a Followers table in our database that stores the followerId and followedId. Each time we receive a new POST /follows request, we'll insert a single new row into our table.
 
+**Example Followers Table:**
+
+| followerId | followedId | createdAt |
+|------------|------------|-----------|
+| user123 | leomessi | 2024-01-15 |
+| user123 | cristiano | 2024-02-20 |
+| user456 | leomessi | 2024-03-10 |
+| user789 | user123 | 2024-04-05 |
+
+In this example:
+- `user123` follows both `leomessi` and `cristiano` (two rows)
+- `leomessi` is followed by both `user123` and `user456` (two separate rows)
+- `user789` follows `user123` (one row)
+- Notice that `leomessi` doesn't follow `user123` back - the relationship is unidirectional
+
+To find all users that `user123` follows: Query where `followerId = user123`
+To find all followers of `leomessi`: Query where `followedId = leomessi`
+
 ![Followers](design_instagram_images/image-1.png)
 
 We've added a dedicated Follow Service to handle follow/unfollow operations separately from the Post Service. Since following users happens less frequently than posting and viewing content, this separation lets us optimize and scale each service based on its specific needs.

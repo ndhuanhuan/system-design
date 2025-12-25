@@ -426,3 +426,338 @@ You should know which technologies to use, not just in theory but in practice, a
 
 **The Bar for Robinhood:** For a staff-level candidate, expectations are high regarding the depth and quality of solutions, especially for the complex scenarios discussed earlier. Exceptional candidates delve deeply into each of the topics mentioned above and may even steer the conversation in a different direction, focusing extensively on a topic they find particularly interesting or relevant. They are also expected to possess a solid understanding of the trade-offs between various solutions and to be able to articulate them clearly, treating the interviewer as a peer.
 
+## Quick Review & Key Takeaways
+
+### Core Problem Summary
+
+**What we're building:** A stock brokerage system (not an exchange) that:
+- Shows live stock prices to users
+- Allows users to create/cancel orders (market & limit orders)
+- Interfaces with external exchange for order execution and price feeds
+
+**Key constraint:** Robinhood is a **brokerage**, not an exchange. We proxy the exchange to minimize connections/costs.
+
+### Core Components & Architecture
+
+**Microservices:**
+- **Symbol Service**: Manages SSE connections for live price updates to clients
+- **Symbol Price Processor**: Listens to exchange price feeds, publishes to Redis
+- **Order Service**: Handles order creation/cancellation, communicates with exchange via NAT gateway
+- **Trade Processor**: Webhook endpoint that receives trade updates from exchange
+- **Clean-up Job**: Background process ensuring order consistency
+
+**Data Stores:**
+- **Order Database (PostgreSQL)**: Partitioned by `userId`, stores order metadata with ACID guarantees
+- **RocksDB (Key-Value)**: Maps `externalOrderId` → `(orderId, userId)` for fast lookups
+- **Redis (Pub/Sub)**: Routes price updates to symbol service instances
+- **Symbol Cache**: In-memory cache for current stock prices
+
+**Infrastructure:**
+- **NAT Gateway**: Consolidates outbound order requests to appear from single/few IPs
+- **Load Balancer**: Supports sticky sessions for SSE connections
+
+### Financial Domain Basics
+
+| Term | Definition |
+|------|------------|
+| **Symbol/Ticker** | Stock abbreviation (e.g., META, AAPL) |
+| **Market Order** | Immediate buy/sell at current price |
+| **Limit Order** | Buy/sell at specified target price |
+| **Exchange** | External entity that executes trades |
+| **Brokerage** | Facilitates customer orders (that's us!) |
+
+### Key API Endpoints
+
+```
+GET /symbol/:name
+  → Returns: Symbol with current price
+
+POST /order
+  Body: { position: "buy", symbol: "META", priceInCents: 52210, numShares: 10 }
+  → Returns: Order (note: priceInCents to avoid float precision issues)
+
+DELETE /order/:id
+  → Returns: { ok: true }
+
+GET /orders
+  → Returns: Order[] (paginated, user's orders only)
+
+POST /subscribe (for SSE)
+  Body: { symbols: ["META", "AAPL", "TSLA"] }
+  → Establishes SSE connection for live price updates
+```
+
+**Important:** User ID extracted from JWT/session token in headers (never trust client-provided userId).
+
+### Live Price Updates: Solution Evolution
+
+| Approach | Pros | Cons | Verdict |
+|----------|------|------|---------|
+| **Polling Exchange Directly** | Simple | Redundant calls, slow updates, expensive | ❌ Bad |
+| **Polling Internal Cache** | Less exchange load | Still polling overhead, slow | ⚠️ Better |
+| **SSE + Redis Pub/Sub** | Real-time, efficient, scalable | Requires sticky sessions, connection management | ✅ Best |
+
+**Best Solution Details (SSE + Redis Pub/Sub):**
+1. Client subscribes via `POST /subscribe` with list of symbols
+2. Symbol Service establishes SSE connection, subscribes to Redis channels for those symbols
+3. Symbol Price Processor publishes price updates to Redis when exchange sends updates
+4. Symbol Service receives updates via Redis pub/sub, fans out to subscribed clients via SSE
+5. Self-regulating: Service unsubscribes from Redis when no clients need that symbol
+
+**Why SSE over WebSockets?**
+- Unidirectional (server → client only)
+- Uses standard HTTP (simpler than WebSocket protocol)
+- Built-in reconnection logic
+- Perfect for "push only" scenarios like price updates
+
+### Order Management: Solution Evolution
+
+| Approach | Pros | Cons | Verdict |
+|----------|------|------|---------|
+| **Client → Exchange Directly** | Low latency | Too many exchange clients, expensive, no order tracking | ❌ Bad |
+| **Order → Queue → Dispatcher** | Scalable, queue buffering | High latency during spikes, violates SLA | ⚠️ Better |
+| **Order Service + NAT Gateway** | Low latency, fewer IPs, scalable | Service does more work | ✅ Best |
+
+**Best Solution Details (NAT Gateway):**
+- Order Service handles client requests directly (no queue)
+- Makes synchronous calls to exchange through NAT Gateway
+- NAT Gateway makes all requests appear from single/few IPs (reduces exchange client costs)
+- Order Service can auto-scale based on CPU/memory (over-provision for spike absorption)
+- Can batch multiple orders in single exchange request if needed
+
+### Database Schema & Partitioning
+
+**Order Table (PostgreSQL):**
+```
+Partition Key: userId
+Fields:
+  - orderId (PK)
+  - userId
+  - symbol
+  - position (buy/sell)
+  - priceInCents
+  - numShares
+  - status (pending, submitted, filled, cancelled, failed)
+  - externalOrderId (from exchange)
+  - clientOrderId (for idempotency)
+  - createdAt
+  - updatedAt
+```
+
+**Why partition by userId?**
+- All order queries are for specific users
+- Single-node reads (fast)
+- Single-node writes (ACID guarantees per user)
+
+**RocksDB Key-Value Store:**
+```
+Key: externalOrderId
+Value: { orderId, userId }
+```
+- Enables Trade Processor to quickly find orders when exchange sends updates
+- Written by Order Service after exchange returns externalOrderId
+
+### Order Consistency & Fault Tolerance
+
+**Order Creation Workflow:**
+1. Store order in DB with `status=pending` (critical: do this FIRST)
+2. Submit order to exchange synchronously → get `externalOrderId`
+3. Write `externalOrderId` to RocksDB
+4. Update order DB with `status=submitted` and `externalOrderId`
+5. Respond to client with success
+
+**Order Cancellation Workflow:**
+1. Update order to `status=pending_cancel` (critical: do this FIRST)
+2. Submit cancellation to exchange
+3. Update order to `status=cancelled` in DB
+4. Respond to client with success
+
+**Failure Handling:**
+
+| Failure Point | Recovery Strategy |
+|---------------|-------------------|
+| DB write fails initially | Return error to client, stop workflow |
+| Exchange submission fails | Mark order as `failed`, return error to client |
+| DB update fails after exchange submission | Clean-up job queries exchange using `clientOrderId`, reconciles state |
+| Cancellation fails | Clean-up job scans `pending_cancel` orders, retries or updates status |
+
+**Clean-up Job Responsibilities:**
+- Scan for orders stuck in `pending` or `pending_cancel` states
+- Query exchange using `clientOrderId` to determine actual state
+- Update DB to match reality (eventual consistency)
+- Runs periodically (e.g., every 30 seconds)
+
+### Scale Numbers & Calculations
+
+**Scale:**
+- 20M daily active users
+- 5 trades per user per day average
+- 100M trades per day total
+- 1000s of symbols
+- Latency target: < 200ms for price updates and order placement
+
+**Back-of-envelope Math:**
+- Peak trading hours: ~3x average load
+- Peak trades per second: 100M / (8 hours × 3600) / 3 ≈ **3,500 TPS**
+- Order Service fleet sizing: Assuming 100 TPS per instance → ~40 instances at peak
+- Symbol Service connections: 20M DAU, assume 30% concurrent → **6M SSE connections**
+- Redis pub/sub: 1000s of channels (one per symbol), minimal memory footprint
+
+**Cost Optimization:**
+- Minimize exchange connections (hence NAT gateway, Redis pub/sub)
+- Exchange charges per client connection and per API call
+- Single exchange connection for price feed vs. millions of client connections
+- Small set of IPs for order submission vs. per-user connections
+
+### Redis Pub/Sub Pattern
+
+**Channels:**
+```
+Channel name: stock:price:{symbol}
+Example: stock:price:META, stock:price:AAPL
+```
+
+**Publisher:** Symbol Price Processor (receives from exchange)
+
+**Subscribers:** Symbol Service instances (multiple)
+
+**Message Format:**
+```json
+{
+  "symbol": "META",
+  "priceInCents": 52210,
+  "timestamp": 1234567890
+}
+```
+
+**Self-regulating Subscription:**
+- Symbol Service subscribes to channel only when ≥1 client needs it
+- Unsubscribes when last client for that symbol disconnects
+- Prevents unnecessary message distribution
+
+### Common Interview Pitfalls to Avoid
+
+❌ **Don't:**
+- Use floating point for prices (use cents/integers)
+- Have every client connect to exchange directly
+- Put orders in queue with tight latency requirements
+- Forget about order consistency and fault tolerance
+- Ignore the "brokerage vs. exchange" distinction
+- Use WebSockets when SSE is sufficient
+- Poll for real-time price updates
+- Forget sticky sessions for SSE connections
+- Miss the RocksDB lookup optimization for trade updates
+
+✅ **Do:**
+- Use priceInCents (integers) to avoid precision issues
+- Proxy the exchange to minimize connections/costs
+- Use NAT gateway for order submission (consolidates IPs)
+- Design for order consistency (pending states, clean-up jobs)
+- Use SSE for unidirectional price updates
+- Use Redis pub/sub for scalable message routing
+- Partition Order DB by userId (fast single-node operations)
+- Address failure scenarios proactively
+- Mention sticky sessions for load balancers
+- Explain clientOrderId for idempotency
+
+### Technology Choices & Justifications
+
+| Component | Technology | Why? |
+|-----------|-----------|------|
+| **Live Updates** | Server-Sent Events (SSE) | Unidirectional, HTTP-based, simpler than WebSocket |
+| **Price Routing** | Redis Pub/Sub | Scalable message distribution, self-regulating subscriptions |
+| **Order Storage** | PostgreSQL (partitioned) | ACID guarantees, strong consistency, single-node per user |
+| **Order ID Mapping** | RocksDB | Fast key-value lookups, low latency |
+| **Order Dispatch** | NAT Gateway | Consolidates IPs, reduces exchange costs |
+| **Price Cache** | In-memory (Redis) | Sub-millisecond reads for current prices |
+
+### Interview Flow Recommendation
+
+**Timing Breakdown (45 min interview):**
+
+1. **Requirements & Clarifications** (5 min)
+   - Functional requirements (live prices, orders)
+   - Non-functional requirements (consistency, latency, scale)
+   - Clarify exchange interface (APIs available)
+   - Emphasize: We're a brokerage, not an exchange
+
+2. **Core Entities & API** (3 min)
+   - User, Symbol, Order
+   - Quick API sketch (4 endpoints)
+
+3. **High-Level Design** (12 min)
+   - Live prices: Bad → Good → Great (SSE + Redis pub/sub)
+   - Order management: Bad → Good → Great (NAT gateway)
+   - Show evolution of thinking
+
+4. **Deep Dive #1: Scaling Live Prices** (8 min)
+   - Redis pub/sub routing
+   - Symbol Service subscription management
+   - Self-regulating connections
+   - Sticky sessions
+
+5. **Deep Dive #2: Order Consistency** (12 min)
+   - Order creation workflow
+   - Cancellation workflow
+   - Failure scenarios & recovery
+   - Clean-up job design
+   - RocksDB for fast lookups
+
+6. **Deep Dive #3: Additional Topics** (5 min, if time)
+   - Rate limiting price updates
+   - Historical data
+   - Live order updates
+
+**Pro Tips:**
+- Start with naive solution, show evolution
+- Always mention trade-offs
+- Relate back to scale numbers
+- Proactively address consistency concerns
+- Draw diagrams as you go
+
+### Key Insights & Trade-offs
+
+**Price Updates:**
+- Polling vs. Push: Push (SSE) is more efficient and meets latency SLA
+- WebSocket vs. SSE: SSE simpler for unidirectional updates
+- Redis pub/sub enables scalable fan-out to multiple Symbol Service instances
+- Trade-off: Sticky sessions complicate load balancing but necessary for SSE
+
+**Order Management:**
+- Sync vs. Async: Must be synchronous for tight latency SLA (< 200ms)
+- Queue vs. Direct: Queue adds latency, direct call with NAT gateway is better
+- Trade-off: Order Service does more work, but maintains low latency
+- Consistency over availability: Order operations must be consistent (ACID)
+
+**Database Design:**
+- Partition by userId: Fast single-node reads/writes per user
+- Trade-off: Can't easily query all orders for a symbol without scatter-gather
+- RocksDB for externalOrderId lookups: Fast but adds complexity
+- Trade-off: Extra storage, but enables efficient Trade Processor updates
+
+**Exchange Cost Optimization:**
+- NAT Gateway: All orders appear from few IPs (reduces exchange costs)
+- Single price feed connection: Shared across all users
+- Redis pub/sub: Distributes price updates internally without N exchange connections
+- Trade-off: More complex internal routing, but massive cost savings
+
+### Critical Success Factors
+
+1. **Minimize Exchange Costs:** Use proxies, NAT gateway, shared connections
+2. **Meet Latency SLA:** Direct sync calls for orders, SSE for prices (no polling)
+3. **Ensure Order Consistency:** Pending states, clean-up jobs, fault tolerance
+4. **Scale Price Updates:** Redis pub/sub + SSE + sticky sessions
+5. **Handle Failures Gracefully:** idempotency (clientOrderId), reconciliation jobs
+
+### Quick Facts to Memorize
+
+- **Scale:** 20M DAU, 5 trades/day, 100M trades/day total, 1000s symbols
+- **Latency:** < 200ms for prices and orders
+- **Peak TPS:** ~3,500 trades/second
+- **Concurrent Connections:** ~6M SSE connections (30% of DAU)
+- **Partition Key:** userId for Order table
+- **Price Format:** Use cents (integers), never floats
+- **Consistency Model:** Strong for orders (ACID), eventual for prices
+- **Real-time Tech:** SSE + Redis Pub/Sub
+- **Exchange Proxy:** NAT Gateway for orders, single connection for prices
+

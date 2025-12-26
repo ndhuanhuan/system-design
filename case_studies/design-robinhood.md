@@ -792,3 +792,123 @@ Example: stock:price:META, stock:price:AAPL
 - **Real-time Tech:** SSE + Redis Pub/Sub
 - **Exchange Proxy:** NAT Gateway for orders, single connection for prices
 
+## Understanding SSE + Redis Pub/Sub: How They Work Together
+
+### Common Confusion: "Which One Do We Use?"
+
+A common point of confusion: **Both SSE and Redis pub/sub are used together** - they're not alternatives! They serve different layers of the architecture.
+
+### The Two-Layer Architecture
+
+#### Layer 1: Client ↔ Symbol Service (SSE)
+**SSE connects users to your backend:**
+```
+User's Phone/Browser ←[SSE Connection]→ Symbol Service Instance
+```
+- **Purpose**: Push price updates from your server to the user's device
+- **Why SSE**: Efficient one-way communication over HTTP
+- **Connection**: One SSE connection per user to a specific Symbol Service instance
+
+#### Layer 2: Symbol Price Processor ↔ Symbol Service (Redis Pub/Sub)
+**Redis pub/sub distributes updates internally within your backend:**
+```
+Symbol Price Processor →[Redis Pub/Sub]→ Multiple Symbol Service Instances
+```
+- **Purpose**: Distribute price updates from the exchange feed to all Symbol Service instances
+- **Why Redis pub/sub**: You have multiple Symbol Service instances (for scalability), and all need the same price updates
+- **Connection**: All Symbol Service instances subscribe to Redis channels for symbols their users care about
+
+### The Complete Flow (Both Together!)
+
+**Step-by-step for META stock price update:**
+
+1. **Exchange sends price update** → Symbol Price Processor receives it
+   ```
+   Exchange: "META is now $522.10"
+   ```
+
+2. **Symbol Price Processor publishes to Redis** (Redis pub/sub - internal)
+   ```
+   Redis Publish to channel "stock:price:META" → { symbol: "META", priceInCents: 52210 }
+   ```
+
+3. **All Symbol Service instances subscribed to META receive it** (Redis pub/sub - internal)
+   ```
+   Symbol Service Instance #1 ← Redis ← { META: $522.10 }
+   Symbol Service Instance #2 ← Redis ← { META: $522.10 }
+   Symbol Service Instance #3 ← Redis ← { META: $522.10 }
+   ```
+
+4. **Each Symbol Service pushes to its connected users via SSE** (SSE - external)
+   ```
+   Symbol Service Instance #1 →[SSE]→ User A, User B, User C
+   Symbol Service Instance #2 →[SSE]→ User D, User E
+   Symbol Service Instance #3 →[SSE]→ User F, User G, User H
+   ```
+
+### Why You Need Both
+
+**If you only used SSE:**
+- Problem: How do you get updates from exchange to multiple Symbol Service instances?
+- You'd need the exchange to connect to each instance separately (expensive, complex)
+
+**If you only used Redis pub/sub:**
+- Problem: How do users receive updates? They can't connect to Redis directly
+- Redis pub/sub is internal infrastructure, not exposed to external clients
+
+### Visual Architecture Diagram
+
+```
+┌─────────┐
+│ Exchange│ (1 connection)
+└────┬────┘
+     │
+     ↓ (Webhooks/Feed)
+┌────────────────────┐
+│Symbol Price        │
+│Processor           │
+└─────────┬──────────┘
+          │
+          ↓ PUBLISHES TO REDIS PUB/SUB (Internal Backend)
+┌─────────────────────────────────────────────┐
+│         Redis (Pub/Sub Channels)            │
+│  Channels: stock:price:META,                │
+│           stock:price:AAPL, etc.            │
+└──┬──────────────┬─────────────┬─────────────┘
+   │              │             │
+   │ SUBSCRIBES   │ SUBSCRIBES  │ SUBSCRIBES
+   ↓              ↓             ↓
+┌─────────────┐ ┌──────────┐ ┌──────────┐
+│Symbol       │ │Symbol    │ │Symbol    │
+│Service #1   │ │Service #2│ │Service #3│
+└──┬──────────┘ └─┬────────┘ └─┬────────┘
+   │              │            │
+   │ SSE          │ SSE        │ SSE (External to Clients)
+   ↓              ↓            ↓
+[Users A,B,C]  [Users D,E]  [Users F,G,H]
+```
+
+### Key Insight
+
+- **Redis pub/sub**: Backend-to-backend message routing (invisible to users)
+- **SSE**: Backend-to-client streaming (what users experience)
+
+They work together as a **two-stage push architecture**:
+1. Exchange → Symbol Price Processor → **Redis pub/sub** → Symbol Services (internal)
+2. Symbol Services → **SSE** → Users (external)
+
+**Analogy**: Think of Redis pub/sub as the internal office intercom system that distributes messages to all departments (Symbol Services), and SSE as the phone lines that those departments use to call customers (users). You need both - the intercom to coordinate internally, and the phone lines to reach customers.
+
+### Why This Design Scales
+
+**Without Redis pub/sub:**
+- Each Symbol Service would need its own connection to exchange
+- 100 Symbol Service instances = 100 exchange connections = expensive
+- Difficult to coordinate which instance subscribes to which symbols
+
+**With Redis pub/sub:**
+- Single exchange connection (Symbol Price Processor)
+- Redis efficiently broadcasts to all interested Symbol Services
+- Self-regulating: Services subscribe/unsubscribe based on user demand
+- Cost-effective and scalable
+

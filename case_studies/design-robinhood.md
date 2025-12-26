@@ -264,6 +264,37 @@ For this approach, our gateway would be an [AWS NAT gateway](https://docs.aws.am
 
 Given that the gateway is managing outbound requests, this approach relies on the order service that is accepting requests from the client to play a role in actually managing orders. This service will run business logic to manage orders and will scale up / down as necessary given order volume. Given this search is being routed to from clients, we might make the auto-scaling criterion for this service quite sensitive (e.g. auto-scale when average 50% CPU usage is hit across the fleet) or we might over-provision this service to absorb trading spikes.
 
+##### Understanding NAT Gateway in Simple Terms
+
+Think of the NAT Gateway like a **corporate mailroom**:
+
+**Without NAT Gateway (Bad):**
+- Every employee (user) mails packages directly to a vendor (exchange)
+- Vendor sees 20 million different return addresses
+- Vendor charges per unique sender → extremely expensive
+- No coordination or optimization possible
+
+**With NAT Gateway (Good):**
+- All employees send packages to the mailroom (Order Service)
+- Mailroom forwards everything through one address (NAT Gateway)
+- Vendor only sees ONE sender (Robinhood's IP)
+- Vendor charges for one client connection → huge savings
+- Mailroom can still scale (add more staff) as needed
+
+**The Flow:**
+```
+User's Phone → Load Balancer → Order Service (many instances) → NAT Gateway (single IP) → Exchange
+```
+
+**Why This Works:**
+1. **Cost Optimization**: Exchange sees 1-5 IPs instead of millions (massive savings)
+2. **Low Latency**: Synchronous request/response (no queue delays)
+3. **Scalable**: Order Service can auto-scale to handle traffic spikes
+4. **Simple**: NAT Gateway is managed infrastructure (no custom dispatcher logic)
+
+**Real-World Analogy:**
+Imagine calling customer support. Instead of 1000 customers each having the support team's personal cell phones (expensive, unmanageable), everyone calls a central number, gets routed to available agents, but the business only maintains one public phone line. The NAT Gateway is that central phone line.
+
 ##### Challenges
 
 This approach requires our order service to do more to manage orders, meaning it will need to be written in a way that is both efficient for client interaction and efficient for exchange interaction (e.g. potentially batching orders together).

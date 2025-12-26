@@ -352,6 +352,123 @@ This new key-value store enables the trade processor to quickly determine whethe
 
 Order update deep dive
 
+#### Understanding the RocksDB Lookup Problem
+
+Let me clarify why we need RocksDB with a concrete example:
+
+**The Problem:**
+
+When the exchange fills an order, it sends us a webhook notification:
+```json
+{
+  "externalOrderId": "EXCH-98765",
+  "symbol": "META",
+  "status": "filled",
+  "filledPrice": 52210,
+  "timestamp": 1234567890
+}
+```
+
+**Notice:** The exchange only tells us `externalOrderId` (their ID for the order). But we need to update OUR database!
+
+**Our Order Database looks like this:**
+
+```
+Database partitioned by userId:
+
+Partition 1 (userId: user123):
+├─ orderId: ord-001, symbol: AAPL, externalOrderId: EXCH-11111
+└─ orderId: ord-002, symbol: TSLA, externalOrderId: EXCH-22222
+
+Partition 2 (userId: user456):
+├─ orderId: ord-003, symbol: META, externalOrderId: EXCH-98765  ← This is our order!
+└─ orderId: ord-004, symbol: AAPL, externalOrderId: EXCH-33333
+
+Partition 3 (userId: user789):
+├─ orderId: ord-005, symbol: META, externalOrderId: EXCH-44444
+└─ orderId: ord-006, symbol: TSLA, externalOrderId: EXCH-55555
+```
+
+**The Challenge:**
+
+We received: `externalOrderId = "EXCH-98765"`
+
+We need to find: Which partition? Which userId? Which orderId?
+
+**Without RocksDB (BAD):**
+```
+1. Search Partition 1 for externalOrderId = "EXCH-98765" → NOT FOUND
+2. Search Partition 2 for externalOrderId = "EXCH-98765" → FOUND! (but this is SLOW)
+3. Would need to search ALL partitions (scatter-gather query)
+4. With 1000 partitions, this is extremely inefficient!
+```
+
+**With RocksDB (GOOD):**
+
+RocksDB is a separate, fast key-value store:
+```
+RocksDB (Single lookup, no partitioning):
+{
+  "EXCH-11111": { orderId: "ord-001", userId: "user123" },
+  "EXCH-22222": { orderId: "ord-002", userId: "user123" },
+  "EXCH-98765": { orderId: "ord-003", userId: "user456" },  ← Fast O(1) lookup!
+  "EXCH-33333": { orderId: "ord-004", userId: "user456" },
+  "EXCH-44444": { orderId: "ord-005", userId: "user789" },
+  "EXCH-55555": { orderId: "ord-006", userId: "user789" }
+}
+```
+
+Now the Trade Processor can:
+```
+1. Receive webhook: externalOrderId = "EXCH-98765"
+2. Lookup in RocksDB: "EXCH-98765" → { orderId: "ord-003", userId: "user456" }
+3. Now we know:
+   - Go to Partition 2 (using userId: "user456")
+   - Update orderId: "ord-003"
+   - Set status to "filled"
+4. Done! Single, fast lookup!
+```
+
+**The Complete Flow with RocksDB:**
+
+```
+Step 1: User creates order
+User (user456) → Order Service → Exchange
+                      ↓
+Exchange responds: externalOrderId = "EXCH-98765"
+                      ↓
+Order Service does TWO writes:
+  a) Write to Order DB (Partition 2): orderId="ord-003", userId="user456", externalOrderId="EXCH-98765"
+  b) Write to RocksDB: "EXCH-98765" → { orderId: "ord-003", userId: "user456" }
+
+Step 2: Order gets filled
+Exchange → Trade Processor (webhook): externalOrderId = "EXCH-98765", status = "filled"
+                      ↓
+Trade Processor looks up RocksDB: "EXCH-98765" → { orderId: "ord-003", userId: "user456" }
+                      ↓
+Trade Processor updates Order DB:
+  - Go to Partition 2 (userId: "user456")
+  - Find orderId: "ord-003"
+  - Update status to "filled"
+                      ↓
+User sees updated order status!
+```
+
+**Why This Matters:**
+
+| Without RocksDB | With RocksDB |
+|-----------------|--------------|
+| Search all 1000 partitions | Single lookup in RocksDB |
+| 1000+ database queries | 1 RocksDB lookup + 1 database update |
+| Takes ~5000ms | Takes ~5ms |
+| Can't handle high volume | Scales easily |
+
+**Key Insight:**
+
+RocksDB is essentially an **index** or **lookup table** that lets us quickly answer: "Given an externalOrderId, which userId and orderId does it belong to?"
+
+Without it, we'd have to search through all partitions (like searching through 1000 filing cabinets). With it, we have a master index (like a library card catalog) that tells us exactly which cabinet and folder to look in.
+
 ### 3) How does the system manage order consistency?
 
 Order consistency is extremely important and worth deep-diving into. Order consistency is defined as orders being stored with consistency on our side and also consistently managed on the exchange side. As we'll get into, fault-tolerance is important for maintaining order consistency.

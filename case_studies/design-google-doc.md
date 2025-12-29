@@ -71,7 +71,7 @@ For what it's worth, this is a choice that Google docs also made - beyond a cert
 
 Here's how it might look on your whiteboard:
 
-![Requirements](design_google_doc_images/requirements.png)
+![Requirements](design_google_doc_images/image.png)
 
 ## Set Up
 
@@ -89,7 +89,7 @@ First we'll define some core entities. These help to define terms between you an
 
 For this problem, we'll need just a few entities on our whiteboard:
 
-![Core Entities](design_google_doc_images/core_entities.png)
+![Core Entities](design_google_doc_images/image-1.png)
 
 We'll explain these to our interviewer as we go through the problem.
 
@@ -124,7 +124,7 @@ Our first step in our document editor is to allow users to create new documents.
 
 From an interviewing perspective the pattern we're using here of a simple horizontally scaled CRUD service fronted by an API gateway is so common you should be able to sling them out really quickly! Don't spend too much time setting the stage.
 
-![Basic Metadata Service](design_google_doc_images/basic_metadata.png)
+![Basic Metadata Service](design_google_doc_images/image-2.png)
 
 Our interviewer is likely to ask us what database we're going to use here. For this problem, let's assume a simple Postgres database for now because it gives us flexible querying and, if we need to scale, we can always partition and replicate later.
 
@@ -144,7 +144,7 @@ I'm going to walk through the fundamentals here to explain how we can solve the 
 
 Let's pretend on each edit the users send their entire document over to a Document Service. The Document Service will then store the document in a blob storage system like S3.
 
-![Deficient Solution - Sending Snapshots](design_google_doc_images/deficient_solution.png)
+![Deficient Solution - Sending Snapshots](design_google_doc_images/image-3.png)
 
 Simple enough, right? Not so fast. First, this design is incredibly inefficient: we're transferring the entire document over the wire for every edit. For a fast typer, this could mean 100s of KBs per keystroke, yuck. But a more serious problem looms.
 
@@ -195,8 +195,6 @@ OT is low memory and fast, but comes with a big tradeoff.
 ###### Challenges
 
 OT requires a central server which can provide a final ordering of operations. This allows us to scale to a small number of collaborators, but not an enormous number. Our non-functional requirements help us here. OT is also tricky to implement correctly and easy to get wrong.
-
-![Operational Transformation](design_google_doc_images/operation_transforms.png)
 
 ### 
 
@@ -255,8 +253,6 @@ If we needed to support a larger number of collaborators, or a Peer-to-Peer syst
 
 With that in mind, we can update our design to solve the collaborative edit problem. Our updated design sends edits to a central server as operations, which are transformed by the server before being recorded in a database.
 
-![Document Service with Operational Transformation](design_google_doc_images/document_service_ot.png)
-
 For our new Document Operations DB, we want to use something that we can write very quickly in an append-only fashion (for now). Cassandra should do the trick. We'll partition by documentId and order by timestamp (which will be set by our document service). Once the edit has been successfully recorded in the database, we can acknowledge/confirm it to the user. We satisfied our durability requirement!
 
 ### 3) Users should be able to view each other's changes in real-time.
@@ -271,8 +267,6 @@ Ok, now that we have a write path let's talk about the most important remaining 
 #### When the Document is Loaded
 
 When a user first connects, they need to get the latest version of the document. In this case when the Websocket connection is initially established for the document we can push to the connection all of the previous operations that have been applied. Since everyone is connecting to the same server, this allows us to assume that all connections are starting from the same place.
-
-![Loading a Document](design_google_doc_images/loading_document.png)
 
 #### When Updates Happen
 
@@ -291,8 +285,6 @@ User A: Ea, Eb
 User B: Eb, Ea
 
 Regardless of the ordering, by applying OT to the operations we can guarantee that each user sees the same document!
-
-![Sending Updates to Clients](design_google_doc_images/sending_updates.png)
 
 ### 4) Users should be able to see the cursor position and presence of other users.
 
@@ -318,8 +310,6 @@ This pattern of needing push updates to clients across a scaled backend service 
 
 [Learn This Pattern](https://www.hellointerview.com/learn/system-design/patterns/realtime-updates)
 
-![WebSocket Connections Pattern](design_google_doc_images/websocket_connections.png)
-
 When you introduce websockets into your design, you're probably doing it because they are _bi-directional_, you can send messages back to your clients. With a traditional client-server architecture you're mostly talking about left-to-right arrows: how can clients connect to the servers to send messages and receive a response. The jump that many candidates fail to make is to think about the **right-to-left** arrows on their diagrams: how do your internal services talk to the clients?
 
 Because the statefulness of websockets is a pain, it can be useful to handle them at the "edge" of your design. By terminating websockets early and exposing an "internal" API to the rest of our system, other systems can retain statelessness and don't need to concern themselves with the details of websocket connections.
@@ -340,8 +330,6 @@ When a client needs to connect:
 Since all of the users of a document are connecting to the same server, when updates happen we can simply pass them to all connected clients.
 
 The beauty of [consistent hashing](https://www.hellointerview.com/learn/system-design/deep-dives/consistent-hashing) is that when we add or remove servers, only a small portion of connections need to be redistributed. Servers periodically check Zookeeper for ring changes and can initiate connection transfers when needed.
-
-![Architecture with Consistent Hashing](design_google_doc_images/consistent_hash_architecture.png)
 
 The downside of this approach is that in these scaling events we need to move a lot of state. Not only do we need to move websocket connections for displaced users (by disconnecting them and forcing them to reconnect to the right server), but we also need to ensure document operations are moved to the correct server.
 
@@ -407,8 +395,6 @@ The Compaction Service can:
 
 If the Document Service has a loaded document, it will discard the flip command to defer compaction which might corrupt existing operations.
 
-![Offline Compaction Service](design_google_doc_images/compaction_service.png)
-
 ##### Challenges
 
 ### 
@@ -427,8 +413,6 @@ When the last client disconnects we can then:
     
 3.  Flip the documentVersionId in the Document Metadata DB.
     
-
-![Online Snapshot/Compact Operations](design_google_doc_images/online_compaction.png)
 
 ##### Challenges
 

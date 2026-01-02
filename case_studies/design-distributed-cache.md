@@ -120,7 +120,19 @@ At its core, a cache is just a hash table. Every programming language has one: P
 
 Your interviewer may ask you to sketch out some pseudocode. Here is what that might look like:
 
-`class Cache:     data = {}  # Simple hash table     get(key):         return self.data[key]     set(key, value):         self.data[key] = value     delete(key):         delete self.data[key]`
+```python
+class Cache:
+    data = {}  # Simple hash table
+    
+    get(key):
+        return self.data[key]
+    
+    set(key, value):
+        self.data[key] = value
+    
+    delete(key):
+        delete self.data[key]
+```
 
 When asked to write pseudocode in a design interview, don't worry about the syntax. Just focus on the logic. You'll note that I don't handle corner cases like key not found or key already exists. No worries, that's not the point here.
 
@@ -149,13 +161,34 @@ The pseudocode below shows how we can modify our cache to support TTLs (Time To 
 
 This gives us the ability to automatically expire cache entries after a specified time period, which is necessary for keeping the cache fresh and preventing stale data from being served.
 
-`# Check the expiry time of the key on get get(key):     (value, expiry) = data[key]     if expiry and currentTime() > expiry:         # Key has expired, remove it         delete data[key]         return null             return value # Set the expiry time of the key on set set(key, value, ttl):     expiry = currentTime() + ttl if ttl else null    data[key] = (value, expiry)`
+```python
+# Check the expiry time of the key on get
+get(key):
+    (value, expiry) = data[key]
+    if expiry and currentTime() > expiry:
+        # Key has expired, remove it
+        delete data[key]
+        return null
+    
+    return value
+
+# Set the expiry time of the key on set
+set(key, value, ttl):
+    expiry = currentTime() + ttl if ttl else null
+    data[key] = (value, expiry)
+```
 
 This handles the basic TTL functionality, but there's a problem: expired keys only get cleaned up when they're accessed. This means our cache could fill up with expired entries that nobody is requesting anymore.
 
 To fix this, we need a background process (often called a "janitor") that periodically scans for and removes expired entries:
 
-`cleanup():         # Find all expired keys and delete     for key, value in data:         if value.expiry and current_time > value.expiry:             delete data[key]`
+```python
+cleanup():
+    # Find all expired keys and delete
+    for key, value in data:
+        if value.expiry and current_time > value.expiry:
+            delete data[key]
+```
 
 ![Simple Cache with TTLs](design_distributed_cache/image-2.png)
 
@@ -217,7 +250,65 @@ The hash table gives us O(1) lookups, while the doubly-linked list gives us O(1)
 
 Here is some pseudocode for the implementation:
 
-`class Node # Node in our doubly-linked list storing values and expiry times class Cache:     get(key):         # get the node from the hash table         node = data[key]                  # Check if the entry has expired         if node.expiry and currentTime() > node.expiry:             # Remove expired node from both hash table and linked list             delete data[key]             delete node             return null                     # Move node to front of list         move_to_front(node)         return node.value     set(key, value, ttl):         # Calculate expiry timestamp if TTL is provided         expiry = currentTime() + ttl if ttl else null                 if key in data:             # Update existing entry             node = data[key]             node.value = value            node.expiry = expiry            move_to_front(node)         else:             # Add new entry             node = Node(key, value, expiry)             data[key] = node            add_node(node)                          # If over capacity, remove least recently used item             if size > capacity:                 lru = tail.prev                 delete lru                 delete data[lru.key]     cleanup():         expired_keys = []                  # Scan from LRU end towards head         current = tail.prev         while current != head:             if current.expiry and currentTime() > current.expiry:                 expired_keys.add(current.key)             current = current.prev                      # Remove expired entries         for key in expired_keys:             node = data[key]             delete data[key]             delete node`
+```python
+class Node:
+    # Node in our doubly-linked list storing values and expiry times
+    pass
+
+class Cache:
+    def get(key):
+        # get the node from the hash table
+        node = data[key]
+        
+        # Check if the entry has expired
+        if node.expiry and currentTime() > node.expiry:
+            # Remove expired node from both hash table and linked list
+            delete data[key]
+            delete node
+            return null
+        
+        # Move node to front of list
+        move_to_front(node)
+        return node.value
+    
+    def set(key, value, ttl):
+        # Calculate expiry timestamp if TTL is provided
+        expiry = currentTime() + ttl if ttl else null
+        
+        if key in data:
+            # Update existing entry
+            node = data[key]
+            node.value = value
+            node.expiry = expiry
+            move_to_front(node)
+        else:
+            # Add new entry
+            node = Node(key, value, expiry)
+            data[key] = node
+            add_node(node)
+            
+            # If over capacity, remove least recently used item
+            if size > capacity:
+                lru = tail.prev
+                delete lru
+                delete data[lru.key]
+    
+    def cleanup():
+        expired_keys = []
+        
+        # Scan from LRU end towards head
+        current = tail.prev
+        while current != head:
+            if current.expiry and currentTime() > current.expiry:
+                expired_keys.add(current.key)
+            current = current.prev
+        
+        # Remove expired entries
+        for key in expired_keys:
+            node = data[key]
+            delete data[key]
+            delete node
+```
 
 The code examples provided here are meant to illustrate core concepts and are intentionally simplified for clarity. A production implementation would need to handle many additional concerns including thread safety, error handling, monitoring, and performance optimizations.
 

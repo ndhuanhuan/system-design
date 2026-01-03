@@ -39,6 +39,10 @@ The only two-letter words composed of those letters are "aa", "ab", and "ba".
 part2: adjust implementation for use case when new words can be added and existing words can be removed from the dictionary at runtime. 
 */
 
+
+// Have a letter to digit mapping first, a->2, b->2, c->2, d->3 ..., stored in letterToDigit map
+// wordToDigits() function to convert a word to its digit representation, used by addWord and removeWord. Maintained in digitToWords map: digit sequence -> set of words
+// Then when input phone number comes, we can directly look up digitToWords map to get the matching words in O(1) time.
 #include <iostream>
 #include <vector>
 #include <string>

@@ -1,5 +1,8 @@
 /*
 https://www.reddit.com/r/Hack2Hire/comments/1n96fq6/from_linkedin_screening_interview_phone_number/
+
+g++ -std=c++11 linkedIn_01.cpp -o linkedIn_01
+./linkedIn_01
 Problem
 You are given:
 

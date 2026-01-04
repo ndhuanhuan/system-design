@@ -28,6 +28,7 @@
 // # Input / Output
 // # Input: two integer IDs userA and userB representing nodes in the graph.
 // # Output: the length of the shortest path between userA and userB.
+// g++ -std=c++11 linkedin_02.cpp -o linkedin_02 ./linkedin_02
 
 #include <iostream>
 #include <vector>

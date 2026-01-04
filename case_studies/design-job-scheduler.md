@@ -350,10 +350,57 @@ With the current design, querying jobs by userId would require an inefficient tw
 
 To solve this, we'll add a [Global Secondary Index (GSI)](https://www.hellointerview.com/learn/system-design/deep-dives/dynamodb#secondary-indexes) on the Executions table:
 
--   Partition Key: user\_id
-    
--   Sort Key: execution\_time + job\_id
-    
+**Executions Table Schema:**
+
+```
+Base Table:
+- Partition Key: time_bucket (Number)
+- Sort Key: execution_time (String) // Format: "timestamp-job_id"
+
+Attributes:
+- job_id (String)
+- user_id (String)
+- status (String) // PENDING, IN_PROGRESS, COMPLETED, FAILED, RETRYING
+- attempt (Number)
+- started_at (Number, optional)
+- completed_at (Number, optional)
+- last_error (String, optional)
+- next_retry_at (Number, optional)
+```
+
+**GSI for User Queries (UserExecutionsIndex):**
+
+```
+GSI Schema:
+- Partition Key: user_id (String)
+- Sort Key: execution_time (String) // Format: "timestamp-job_id"
+
+Projected Attributes: ALL (or specific attributes needed for user queries)
+```
+
+**Example Query Patterns:**
+
+```python
+# Query upcoming jobs (using base table)
+query(
+  KeyConditionExpression: "time_bucket = :bucket AND execution_time < :now",
+  FilterExpression: "status = PENDING"
+)
+
+# Query all executions for a user (using GSI)
+query(
+  IndexName: "UserExecutionsIndex",
+  KeyConditionExpression: "user_id = :userId",
+  ScanIndexForward: false  # Sort descending by execution_time
+)
+
+# Query user's failed jobs in a time range (using GSI)
+query(
+  IndexName: "UserExecutionsIndex",
+  KeyConditionExpression: "user_id = :userId AND execution_time BETWEEN :start AND :end",
+  FilterExpression: "status = FAILED"
+)
+```
 
 This GSI allows us to efficiently find all executions for a user, sort them by execution time, support pagination, and filter by status if needed. The index provides a fast and scalable way to query execution data from the user's perspective.
 

@@ -205,9 +205,112 @@ Let's split our data into two tables. First, our Jobs table stores the job defin
 
 `{   "job_id": "123e4567-e89b-12d3-a456-426614174000",  // Partition key for easy lookup by job_id   "user_id": "user_123",    "task_id": "send_email",   "schedule": {     "type": "CRON" | "DATE"      "expression": "0 10 * * *"  // Every day at 10:00 AM for CRON, specific date for DATE   },   "parameters": {     "to": "john@example.com",     "subject": "Daily Report"   } }`
 
+**Example Jobs Table Entries:**
+
+```json
+// Recurring job - Daily email report
+{
+  "job_id": "123e4567-e89b-12d3-a456-426614174000",
+  "user_id": "user_123",
+  "task_id": "send_email",
+  "schedule": {
+    "type": "CRON",
+    "expression": "0 10 * * *"  // Every day at 10:00 AM
+  },
+  "parameters": {
+    "to": "john@example.com",
+    "subject": "Daily Report",
+    "template": "daily_summary"
+  }
+}
+
+// One-time job - Send welcome email
+{
+  "job_id": "987f6543-e21b-34c5-b678-789012345678",
+  "user_id": "user_456",
+  "task_id": "send_email",
+  "schedule": {
+    "type": "DATE",
+    "expression": "1715548800"  // May 12, 2024 at 10:00:00 PM UTC
+  },
+  "parameters": {
+    "to": "alice@example.com",
+    "subject": "Welcome!",
+    "template": "welcome_email"
+  }
+}
+
+// Recurring job - Weekly data backup
+{
+  "job_id": "456d7890-f12a-45d6-c789-901234567890",
+  "user_id": "user_789",
+  "task_id": "backup_database",
+  "schedule": {
+    "type": "CRON",
+    "expression": "0 2 * * 0"  // Every Sunday at 2:00 AM
+  },
+  "parameters": {
+    "database": "production_db",
+    "destination": "s3://backups/weekly/"
+  }
+}
+```
+
 Then, our Executions table tracks each individual time a job should run:
 
 `{   "time_bucket": 1715547600,  // Partition key (Unix timestamp rounded down to hour)   "execution_time": "1715548800-123e4567-e89b-12d3-a456-426614174000",  // Sort key (exact execution time and the jobId since partition key and sort key must be unique)   "job_id": "123e4567-e89b-12d3-a456-426614174000",   "user_id": "user_123",    "status": "PENDING",   "attempt": 0 }`
+
+**Example Executions Table Entries:**
+
+```json
+// First instance of the daily email report (May 13, 2024 at 10:00 AM)
+{
+  "time_bucket": 1715594400,  // Rounded down to 10:00:00 AM
+  "execution_time": "1715594400-123e4567-e89b-12d3-a456-426614174000",
+  "job_id": "123e4567-e89b-12d3-a456-426614174000",
+  "user_id": "user_123",
+  "status": "COMPLETED",
+  "attempt": 0,
+  "started_at": 1715594401,
+  "completed_at": 1715594405
+}
+
+// Second instance of the daily email report (May 14, 2024 at 10:00 AM)
+{
+  "time_bucket": 1715680800,  // Rounded down to 10:00:00 AM next day
+  "execution_time": "1715680800-123e4567-e89b-12d3-a456-426614174000",
+  "job_id": "123e4567-e89b-12d3-a456-426614174000",
+  "user_id": "user_123",
+  "status": "IN_PROGRESS",
+  "attempt": 0,
+  "started_at": 1715680802
+}
+
+// One-time welcome email execution
+{
+  "time_bucket": 1715547600,  // Rounded down to nearest hour
+  "execution_time": "1715548800-987f6543-e21b-34c5-b678-789012345678",
+  "job_id": "987f6543-e21b-34c5-b678-789012345678",
+  "user_id": "user_456",
+  "status": "COMPLETED",
+  "attempt": 0,
+  "started_at": 1715548801,
+  "completed_at": 1715548803
+}
+
+// Weekly backup execution that failed and is retrying
+{
+  "time_bucket": 1715565600,  // Sunday 2:00 AM hour bucket
+  "execution_time": "1715565600-456d7890-f12a-45d6-c789-901234567890",
+  "job_id": "456d7890-f12a-45d6-c789-901234567890",
+  "user_id": "user_789",
+  "status": "RETRYING",
+  "attempt": 2,
+  "started_at": 1715565602,
+  "last_error": "Connection timeout to database",
+  "next_retry_at": 1715565750
+}
+```
 
 By using a time bucket (Unix timestamp rounded down to the nearest hour) as our partition key, we achieve efficient querying while avoiding hot partition issues. For example, to find jobs that need to run in the next few minutes, we only need to query the current hour's bucket and possibly the next hour's bucket. The time bucket can be easily calculated:
 

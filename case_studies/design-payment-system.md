@@ -700,3 +700,130 @@ As a staff+ candidate, I'd expect you to demonstrate deep expertise in payment s
 
 You should proactively identify and address the most challenging edge cases in payment processing. For example, you might discuss how to handle payment network outages through fallback processing paths or how to design resilient reconciliation processes that guarantee eventual consistency with external payment networks.
 
+## Quick Review Guide for Interview
+
+### Core Concepts to Remember
+
+**Key Entities**
+- **Merchant**: Business using the payment platform (has API keys, bank info)
+- **PaymentIntent**: Merchant's intention to collect payment (tracks lifecycle: created → authorized → captured)
+- **Transaction**: Individual money-movement record (Charge, Refund, Dispute, Payout)
+- One PaymentIntent → Many Transactions
+
+**Essential APIs**
+```
+POST /payment-intents              # Create payment intent
+POST /payment-intents/{id}/transactions  # Process payment
+GET /payment-intents/{id}          # Check status
+```
+
+### Architecture Components
+
+**Core Services**
+1. **API Gateway**: Authentication, rate limiting, routing
+2. **PaymentIntent Service**: Manages payment intents
+3. **Transaction Service**: Handles card processing, talks to payment networks
+4. **Reconciliation Service**: Verifies payments with external networks
+5. **Webhook Service** (bonus): Push notifications to merchants
+
+**Data Layer**
+- **Operational Database**: PostgreSQL/MySQL for current state (10k TPS)
+- **Event Stream**: Kafka for immutable audit log (3-5 partitions, 3x replication)
+- **CDC**: Captures all DB changes → Kafka automatically
+- **Cold Storage**: S3 for transactions older than 3-6 months
+
+### Security Deep Dive
+
+**Authentication**
+- ✅ **Best**: API Key + Request Signing (HMAC with timestamp + nonce)
+- Prevents replay attacks, validates authenticity
+
+**Card Data Protection**
+- ✅ **Best**: iFrame + Client-Side Encryption
+- Card data encrypted in browser with public key
+- Never touches merchant servers
+- PCI DSS compliance
+
+### Transaction Safety
+
+**The Problem**: Payment networks are asynchronous, timeouts ≠ failure
+
+**Solution**: Event-Driven Reconciliation
+1. Record attempt in DB before calling network (triggers CDC event)
+2. Call payment network with timeout
+3. Handle response:
+   - Success → update status
+   - Timeout → mark "pending_verification"
+   - Failure → mark failed
+4. Reconciliation service queries network for timeouts
+5. Process daily settlement files from networks
+
+**Key Insight**: Track intentions before actions, embrace eventual consistency
+
+### Durability & Auditability
+
+**Architecture**: Database + CDC + Kafka
+- All DB changes automatically captured via CDC
+- Immutable event stream in Kafka (append-only)
+- Consumers: Audit, Analytics, Reconciliation, Webhooks
+- S3 archive for long-term compliance (7+ years)
+
+**Why This Works**:
+- No application code needed for audit trail
+- Independent scaling (operational DB vs audit)
+- Complete transaction history for disputes
+- Foundation for advanced features
+
+### Scaling Strategy
+
+**At 10,000 TPS:**
+
+**Services**: Stateless, horizontal scaling with load balancers
+
+**Kafka**: 
+- 3-5 partitions (5-10k msgs/sec per partition)
+- Partition by `payment_intent_id` for ordering
+- 3x replication for fault tolerance
+
+**Database**:
+- Shard by `merchant_id`
+- Read replicas for status queries
+- Redis cache for hot data
+- ~180TB/year data growth → aggressive archiving
+
+**Data Retention**:
+- Hot: 3-6 months (operational DB)
+- Cold: 7+ years (S3 archive)
+
+### Common Pitfalls to Avoid
+
+❌ Card data touching merchant servers (PCI DSS violation)
+❌ Assuming timeouts = failures (leads to double-charging)
+❌ Mutable audit logs (lose history, fail compliance)
+❌ Synchronous payment network calls without reconciliation
+❌ Missing idempotency keys (duplicate payments)
+
+### Interview Flow Tips
+
+1. **Start Simple**: Basic flow first (create intent → process → status)
+2. **Security**: Proactively mention card data never touches merchant servers
+3. **Consistency**: Acknowledge async nature of payment networks
+4. **Deep Dive Order**: Security → Durability → Transaction Safety → Scale
+5. **Pattern**: Multi-step processes with state machines
+
+### Key Numbers
+- 10,000 TPS target
+- 30-60 second timeout for payment networks
+- 3-5 Kafka partitions
+- 3x replication factor
+- 500 bytes per transaction
+- 180TB/year data growth
+- 3-6 months hot storage retention
+
+### Bonus: Webhooks (If Time Permits)
+- Server-to-server communication (not WebSockets!)
+- Merchant provides callback URL + subscribed events
+- Webhook Service consumes Kafka events
+- Retry with exponential backoff on failure
+- Signature verification with shared secret
+

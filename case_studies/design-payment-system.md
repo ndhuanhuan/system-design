@@ -602,6 +602,115 @@ This two-phase approach allows the system to compare the "created" event data wi
 
 Most missing "completed" events in production are actually due to external system timeouts before the database write occurred, rather than event emission failures after successful writes.
 
+---
+
+**📝 Additional Explanation: Understanding the Two-Phase Event Model**
+
+*This section provides a detailed walkthrough to clarify how the two-phase event emission actually works in practice.*
+
+Let's break down what's happening with a concrete example. Imagine a customer is paying $50 for a product:
+
+**Scenario 1: Happy Path (Everything Works)**
+
+```
+Step 1: Transaction Service receives payment request
+  → Emits "Transaction Created Event" to Kafka
+  → Event payload: {
+      transaction_id: "txn_123",
+      payment_intent_id: "pi_456", 
+      amount: 5000,
+      status: "processing"
+    }
+
+Step 2: Write to Database
+  → INSERT INTO transactions (id, payment_intent_id, amount, status)
+  → Database commit succeeds
+
+Step 3: Emit "Transaction Completed Event" to Kafka
+  → Event payload: {
+      transaction_id: "txn_123",
+      payment_intent_id: "pi_456",
+      amount: 5000,
+      status: "completed",
+      db_commit_timestamp: "2024-01-06T10:30:00Z"
+    }
+
+Result: ✅ Both events in Kafka, database updated, downstream services can process
+```
+
+**Scenario 2: Database Write Fails**
+
+```
+Step 1: Emit "Transaction Created Event" ✅
+  → Event is in Kafka
+
+Step 2: Try to write to Database
+  → INSERT fails (database connection lost)
+  → Transaction service catches error
+
+Step 3: Transaction enters LOCKED state
+  → Mark transaction as "locked/needs_retry"
+  → DON'T emit "Completed Event" (nothing to complete!)
+
+Retry Logic:
+  → System retries the entire process
+  → Emits NEW "Transaction Created Event" 
+  → Tries database write again
+  → If successful, emits "Transaction Completed Event"
+```
+
+**Scenario 3: Completed Event Fails to Emit (The Tricky One)**
+
+```
+Step 1: Emit "Transaction Created Event" ✅
+  → Event successfully in Kafka
+
+Step 2: Write to Database ✅
+  → Transaction record successfully saved
+  → Status = "completed"
+
+Step 3: Try to emit "Transaction Completed Event"
+  → Kafka connection fails / Network issue
+  → Event NOT written to Kafka ❌
+
+Problem: Database has the completed transaction, but downstream services 
+(Reconciliation, Webhooks, Analytics) never got notified!
+
+Solution - Smart Retry:
+  1. System detects "Completed Event" emission failed
+  2. Transaction enters LOCKED state (blocks further updates)
+  3. Retry job queries database: "Is txn_123 completed in DB?"
+  4. Database says: "Yes! It's been completed since 10:30:00Z"
+  5. System ONLY re-emits "Completed Event" (no duplicate DB write)
+  6. Unlock transaction after successful emission
+```
+
+**Why Two Events Matter**
+
+The "Created Event" tells downstream services: "Hey, a transaction is starting!"
+- Fraud detection can begin analyzing
+- Monitoring can track processing time
+- If it fails, we know what we attempted
+
+The "Completed Event" tells downstream services: "It's official - this is in the database!"
+- Reconciliation service can verify with bank
+- Webhook service can notify merchant
+- Analytics can count it as a completed transaction
+
+**The Key Insight:**
+
+By separating these two events, we can distinguish between:
+- "Database write failed, retry everything" (no Completed Event exists)
+- "Database write succeeded, but event emission failed, just re-emit" (Completed Event missing)
+
+Without this two-phase approach, if a retry happened, we wouldn't know if we should:
+1. Insert a new database record (might create duplicate!)
+2. Or just re-send the event (safer, but only if DB write already succeeded)
+
+The "Created Event" acts as our intention log, and the "Completed Event" acts as our confirmation. This prevents duplicate charges while ensuring all downstream services eventually get notified.
+
+---
+
 Show More
 
 The key to handling asynchronous payment networks is accepting that uncertainty is inevitable and building systems designed for eventual consistency. By combining a traditional database for synchronous merchant needs with an event stream for asynchronous network reality, we achieve both performance and correctness. This pattern, proven at companies like Stripe processing billions in payments, shows that the best distributed systems don't fight the nature of external dependencies — they embrace and design for them.

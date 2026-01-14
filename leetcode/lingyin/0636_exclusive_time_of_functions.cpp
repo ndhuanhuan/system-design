@@ -19,6 +19,7 @@ public:
                 st.push(fid);
                 prev = curr;
             } else {
+                // Tip: for end, always add 1 to curr, because the end time is inclusive
                 int f = st.top();
                 st.pop();
                 res[f] += curr - prev + 1;

@@ -1,4 +1,5 @@
 // https://leetcode.com/problems/cinema-seat-allocation/description/
+// https://zxi.mytechroad.com/blog/hashtable/leetcode-1386-cinema-seat-allocation/
 class Solution {
 public:
   int maxNumberOfFamilies(int n, vector<vector<int>>& reservedSeats) {
@@ -6,7 +7,7 @@ public:
     for (auto& seat : reservedSeats)
       rows[seat[0]] |= 1 << (seat[1] - 1);
     
-    int ans = (n - rows.size()) * 2;
+    int ans = (n - rows.size()) * 2; // empty rows can fit 2 families
     
     for (const auto& [idx, row] : rows) {
       int s2 = row & 0b0000011110;

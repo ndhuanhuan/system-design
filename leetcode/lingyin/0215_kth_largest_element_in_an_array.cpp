@@ -26,7 +26,9 @@ public:
             if (nums[r] <= pivot) r--;
         }
 
-        swap(nums[left], nums[r]); // any index smaller than r guarantee greater or equal to nums[left]
+        // After loop exits: l > r. r points to last element >= pivot, l points to first element < pivot.
+        // Swap with r (not l) because r is the correct final position for pivot where all left elements >= pivot.
+        swap(nums[left], nums[r]);
         return r;
     }
 

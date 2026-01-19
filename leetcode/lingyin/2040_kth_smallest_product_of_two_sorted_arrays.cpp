@@ -1,34 +1,60 @@
 // https://leetcode.com/problems/kth-smallest-product-of-two-sorted-arrays/description/
+// https://leetcode.cn/problems/kth-smallest-product-of-two-sorted-arrays/solutions/3698504/liang-ge-you-xu-shu-zu-de-di-k-xiao-chen-5qt9/
+
+// Binary search on answer: search for kth smallest product in range [-10^10, 10^10]
+// For each candidate value v, count how many products <= v using binary search
+
 class Solution {
 public:
-    long long count(vector<int>& n1, vector<int>& n2, long long m) {
-        long long cnt = 0;
-        for (int p1 = 0, p2 = n2.size() - 1; p1 < n1.size(); ++p1) {
-            while (p2 >= 0 && (long long)n1[p1] * n2[p2] > m)
-                --p2;
-            cnt += p2 + 1;
+    // Count how many products (x1 * nums2[j]) are <= v
+    // When x1 >= 0: products are non-decreasing (normal binary search)
+    // When x1 < 0: products are non-increasing (reversed binary search)
+    int f(vector<int> &nums2, long long x1, long long v) {
+        int n2 = nums2.size();
+        int left = 0, right = n2 - 1;
+        
+        // Binary search for the cutoff point
+        while (left <= right) {
+            int mid = (left + right) / 2;
+            // If x1 >= 0: find largest index where x1*nums2[mid] <= v
+            // If x1 < 0: find largest index where x1*nums2[mid] > v (products decrease)
+            if (x1 >= 0 && nums2[mid] * x1 <= v || x1 < 0 && nums2[mid] * x1 > v) {
+                left = mid + 1;
+            } else {
+                right = mid - 1;
+            }
         }
-        return cnt;
+        
+        // Return count of products <= v
+        if (x1 >= 0) {
+            return left;  // Products nums2[0..left-1] * x1 are all <= v
+        } else {
+            return n2 - left;  // Products nums2[left..n2-1] * x1 are all <= v
+        }
     }
-    long long kthSmallestProduct(vector<int>& n1, vector<int>& n2, long long k) {
-        auto lp = lower_bound(begin(n1), end(n1), 0), rp = lower_bound(begin(n2), end(n2), 0);
-        vector<int> neg1(begin(n1), lp), neg2(begin(n2), rp);
-        vector<int> pos1(lp, end(n1)), pos2(rp, end(n2));
-        vector<int> pos1_r(rbegin(pos1), rend(pos1)), pos2_r(rbegin(pos2), rend(pos2));
-        vector<int> neg1_r(rbegin(neg1), rend(neg1)), neg2_r(rbegin(neg2), rend(neg2)); 
-        long long l = -10000000000, r = 10000000000;
-        while (l < r) {
-            long long m = (l + r - 1) / 2, cnt = 0;
-            if (m >= 0)
-                cnt = count(neg1_r, neg2_r, m) + count(pos1, pos2, m) 
-                    + neg1.size() * pos2.size() + neg2.size() * pos1.size();
-            else
-                cnt = count(pos2_r, neg1, m) + count(pos1_r, neg2, m);
-            if (cnt < k) 
-                l = m + 1;
-            else
-                r = m;
+
+    long long kthSmallestProduct(vector<int>& nums1, vector<int>& nums2, long long k) {
+        int n1 = nums1.size();
+        // Binary search on the product value range
+        long long left = -1e10, right = 1e10;
+        
+        while (left <= right) {
+            long long mid = (left + right) / 2;
+            
+            // Count how many products are <= mid
+            long long count = 0;
+            for (int i = 0; i < n1; i++) {
+                count += f(nums2, nums1[i], mid);
+            }
+            
+            // Adjust search range based on count
+            if (count < k) {
+                left = mid + 1;  // Need larger products
+            } else {
+                right = mid - 1;  // Have enough, try smaller
+            }
         }
-        return l;
+        return left;
     }
 };
+

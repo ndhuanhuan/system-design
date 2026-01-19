@@ -13,7 +13,7 @@ public:
         }
         
         // cnt[i][j] = max count of j-th color in any path ending at node i
-        vector<array<int, 26>> cnt(n, array<int, 26>{});
+        vector<vector<int>> cnt(n, vector<int>(26, 0));
         
         // Initialize queue with source nodes (indegree == 0)
         queue<int> q;
@@ -31,7 +31,9 @@ public:
             int u = q.front();
             q.pop();
             
-            // Update max color value with current node's best color count
+            // Node u's color is already counted in cnt[u]:
+            // - Source nodes: initialized when added to queue (line 22)
+            // - Non-source nodes: counted when updated by predecessors (line 42)
             ans = max(ans, *max_element(cnt[u].begin(), cnt[u].end()));
             seen++;
             

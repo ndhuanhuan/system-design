@@ -13,29 +13,24 @@
 class Solution {
 public:
     int findSecondMinimumValue(TreeNode* root) {
-        if(!root) return -1;
-        deque<TreeNode*> q;
-        
-        q.push_back(root);
-        
-        int s1 = root->val;
-        int s2 = -1;
-        bool found = false;
-        
-        while(!q.empty()) {
-            auto cur = q.front();
-            q.pop_front();
-            
-            if(cur->val > s1 && (s2 == -1 || cur->val < s2)) {
-                found = true;
-                s2 = cur->val;
-                continue;
+        int ans = -1;
+        int rootvalue = root->val;
+
+        function<void(TreeNode*)> dfs = [&](TreeNode* node) {
+            if (!node) {
+                return;
             }
-            
-            if(cur->left) q.push_back(cur->left);
-            if(cur->right) q.push_back(cur->right);
-        }
-        
-        return s2;
+            if (ans != -1 && node->val >= ans) {
+                return;
+            }
+            if (node->val > rootvalue) {
+                ans = node->val;
+            }
+            dfs(node->left);
+            dfs(node->right);
+        };
+
+        dfs(root);
+        return ans;
     }
 };

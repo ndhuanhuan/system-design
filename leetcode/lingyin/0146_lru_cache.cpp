@@ -43,7 +43,19 @@ public:
         if(it == m_.cend()) return -1;
         
         // Move accessed item to front (most recently used)
+        // splice() efficiently moves the node to the front in O(1) time
+        // - cache_.begin(): Target position (front of the list)
+        // - cache_: Source list (same list here)
+        // - it->second: Iterator pointing to the node to move
         cache_.splice(cache_.begin(), cache_, it->second);
+        
+        // C++ std::list::splice documentation:
+        // splice() moves elements from one part of the list to another in O(1) time.
+        // Syntax: list.splice(position, source_list, iterator)
+        // - position: Where to move the element(s) to
+        // - source_list: The list containing the element(s) (can be the same list)
+        // - iterator: The specific element to move
+        // In this case, it moves the accessed node to the front of the list.
         
         return it->second->second;
     }

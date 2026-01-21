@@ -48,7 +48,7 @@ public:
             left = right;
             i++;
         }
-        s.resize(right - 1);
+        s.resize(right - 1); // remove trailing space because we always add a space after each word
         return s;
     }
 };

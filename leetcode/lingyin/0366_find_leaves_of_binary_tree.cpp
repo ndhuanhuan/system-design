@@ -10,6 +10,7 @@
  *     TreeNode(int x, TreeNode *left, TreeNode *right) : val(x), left(left), right(right) {}
  * };
  */
+// https://github.com/phantomwolf/leetcode-problems/blob/master/Interviews/%E8%B0%B7%E6%AD%8C/Medium-N-aryTreeLeafNodeRemoval/README.md
 class Solution {
 public:
     vector<vector<int>> findLeaves(TreeNode* root) {

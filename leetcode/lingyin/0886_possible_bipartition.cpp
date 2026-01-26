@@ -31,3 +31,17 @@ private:
         return true;
     }
 };
+
+// my own initial version, but less efficient
+    // bool dfs(int cur, int color) {
+    //     if (colors_[cur] == 0) {
+    //         colors_[cur] = color;
+    //         for(auto& next: g_[cur]) {
+    //             if(!dfs(next, -color)) return false;
+    //         }
+    //     } else {
+    //         if(colors_[cur] != color) return false;
+    //     }
+
+    //     return true;
+    // }

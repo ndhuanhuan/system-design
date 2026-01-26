@@ -11,6 +11,7 @@ public:
     int pickIndex() {
         float randNum = (float) rand() / RAND_MAX;
         float target = randNum * sums_.back();
+        // upper_bound: ensures boundary values belong to next bucket [prev_sum, curr_sum)
         return upper_bound(sums_.begin(), sums_.end(), target) - sums_.begin();
     }
 private:

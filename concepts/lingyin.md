@@ -90,11 +90,13 @@ Set of operations that execute as a single atomic unit. Either all succeed (comm
 - Write to cache AND database simultaneously
 - Slower writes, but data consistency guaranteed
 - Lower risk of data loss
+- *Example*: User updates profile name → write to Redis cache + PostgreSQL at same time → both updated before returning success. If cache server crashes, data still safe in DB.
 
 **Write-Back** (Write-Behind):
 - Write to cache only, async write to database later
 - Faster writes, better performance
 - Risk of data loss if cache crashes before flush
+- *Example*: User likes a post → increment counter in Redis only → return immediately → background worker flushes to DB every 5 seconds. If Redis crashes before flush, recent likes lost but system is fast.
 
 ### Which Database to Use
 **SQL (Relational)**:
